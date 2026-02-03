@@ -1,5 +1,7 @@
 import os
-from moviepy.video.VideoClip import ColorClip, TextClip
+from moviepy.video.VideoClip import ColorClip, TextClip, ImageClip
+from moviepy.video.compositing.CompositeVideoClip import concatenate_videoclips as moviepy_concatenate
+from moviepy.video.io.VideoFileClip import VideoFileClip
 from PIL import ImageColor
 from mcp_moviepy.utils.doc_validation import ensure_doc_reference
 from mcp_moviepy.utils.file_utils import get_temp_file_path
@@ -100,3 +102,64 @@ def create_text_clip(
     clip.close()
     
     return os.path.abspath(output_path)
+
+@ensure_doc_reference
+def create_image_clip(img_path: str, duration: float) -> str:
+    """
+    Creates a video clip from a static image file.
+    
+    Ref: html/reference/reference/moviepy.video.VideoClip.ImageClip.html
+    
+    Args:
+        img_path (str): Path to the image file.
+        duration (float): Duration of the clip in seconds.
+        
+    Returns:
+        str: Absolute path to the generated MP4 file.
+    """
+    if duration <= 0:
+        raise ValueError("duration must be positive")
+        
+    if not os.path.exists(img_path):
+        raise ValueError("Image file does not exist")
+        
+    output_path = get_temp_file_path("image_clip", "mp4")
+    
+    clip = ImageClip(img=img_path, duration=duration)
+    clip.fps = 24
+    clip.write_videofile(output_path, logger=None)
+    clip.close()
+    
+    return os.path.abspath(output_path)
+
+@ensure_doc_reference
+def concatenate_videoclips(clip_paths: list[str], method: str = "compose") -> str:
+    """
+    Joins multiple video clips into a single sequence.
+    
+    Ref: html/reference/reference/moviepy.video.compositing.CompositeVideoClip.concatenate_videoclips.html
+    
+    Args:
+        clip_paths (list[str]): List of paths to video files to concatenate.
+        method (str, optional): 'chain' or 'compose'. Default to 'compose'.
+        
+    Returns:
+        str: Absolute path to the generated MP4 file.
+    """
+    if not clip_paths:
+        raise ValueError("clip_paths cannot be empty")
+        
+    for p in clip_paths:
+        if not os.path.exists(p):
+            raise ValueError(f"All clip paths must exist. Missing: {p}")
+            
+    clips = [VideoFileClip(p) for p in clip_paths]
+    
+    try:
+        final_clip = moviepy_concatenate(clips, method=method)
+        output_path = get_temp_file_path("concatenated", "mp4")
+        final_clip.write_videofile(output_path, logger=None)
+        return os.path.abspath(output_path)
+    finally:
+        for clip in clips:
+            clip.close()

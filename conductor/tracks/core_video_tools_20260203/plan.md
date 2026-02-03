@@ -19,10 +19,10 @@ Goal: Implement tools for creating clips from text and solid colors.
 ## Phase 3: Image and Composition Tools
 Goal: Implement tools for image clips and basic concatenation.
 
-- [ ] **Task: Implement `create_image_clip` Tool**
+- [~] **Task: Implement `create_image_clip` Tool**
     - [ ] Write tests for `create_image_clip` (validating file existence, duration)
     - [ ] Implement `create_image_clip` using `moviepy.ImageClip`
-- [ ] **Task: Implement `concatenate_videoclips` Tool**
+- [~] **Task: Implement `concatenate_videoclips` Tool**
     - [ ] Write tests for `concatenate_videoclips` (validating multiple clip merging)
     - [ ] Implement `concatenate_videoclips` using `moviepy.concatenate_videoclips`
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Image and Composition Tools' (Protocol in workflow.md)

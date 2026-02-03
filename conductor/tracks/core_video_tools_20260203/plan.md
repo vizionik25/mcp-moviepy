@@ -16,13 +16,9 @@ Goal: Implement tools for creating clips from text and solid colors.
 - [x] **Task: Implement `create_text_clip` Tool** (d582ad0)
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Static Clip Generation' (Protocol in workflow.md) (d582ad0)
 
-## Phase 3: Image and Composition Tools
+## Phase 3: Image and Composition Tools [checkpoint: 5d1c57d]
 Goal: Implement tools for image clips and basic concatenation.
 
-- [~] **Task: Implement `create_image_clip` Tool**
-    - [ ] Write tests for `create_image_clip` (validating file existence, duration)
-    - [ ] Implement `create_image_clip` using `moviepy.ImageClip`
-- [~] **Task: Implement `concatenate_videoclips` Tool**
-    - [ ] Write tests for `concatenate_videoclips` (validating multiple clip merging)
-    - [ ] Implement `concatenate_videoclips` using `moviepy.concatenate_videoclips`
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Image and Composition Tools' (Protocol in workflow.md)
+- [x] **Task: Implement `create_image_clip` Tool** (5d1c57d)
+- [x] **Task: Implement `concatenate_videoclips` Tool** (5d1c57d)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Image and Composition Tools' (Protocol in workflow.md) (5d1c57d)

@@ -12,10 +12,10 @@ Goal: Set up internal helpers for file management and documentation mapping.
 ## Phase 2: Static Clip Generation
 Goal: Implement tools for creating clips from text and solid colors.
 
-- [ ] **Task: Implement `create_color_clip` Tool**
+- [~] **Task: Implement `create_color_clip` Tool**
     - [ ] Write tests for `create_color_clip` (validating size, color, duration)
     - [ ] Implement `create_color_clip` using `moviepy.ColorClip`
-- [ ] **Task: Implement `create_text_clip` Tool**
+- [~] **Task: Implement `create_text_clip` Tool**
     - [ ] Write tests for `create_text_clip` (validating text rendering, fonts, colors)
     - [ ] Implement `create_text_clip` using `moviepy.TextClip`
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Static Clip Generation' (Protocol in workflow.md)

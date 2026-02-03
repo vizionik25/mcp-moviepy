@@ -2,16 +2,12 @@
 
 This plan outlines the steps to implement core video creation tools as MCP tools, following a TDD workflow.
 
-## Phase 1: Foundation and Utilities
+## Phase 1: Foundation and Utilities [checkpoint: 08cb851]
 Goal: Set up internal helpers for file management and documentation mapping.
 
-- [~] **Task: Implement Documentation Mapping Helper**
-    - [ ] Write tests for docstring reference validation
-    - [ ] Implement a decorator or helper to ensure docstrings contain links to `html/`
-- [~] **Task: Implement Temporary File Management**
-    - [ ] Write tests for secure temp file generation and cleanup
-    - [ ] Implement utility to manage output paths for generated clips
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation and Utilities' (Protocol in workflow.md)
+- [x] **Task: Implement Documentation Mapping Helper** (08cb851)
+- [x] **Task: Implement Temporary File Management** (08cb851)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Foundation and Utilities' (Protocol in workflow.md) (08cb851)
 
 ## Phase 2: Static Clip Generation
 Goal: Implement tools for creating clips from text and solid colors.

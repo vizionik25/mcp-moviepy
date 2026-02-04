@@ -706,5 +706,59 @@ def tools_check_installation() -> str:
     except Exception as e:
         return f"Check failed: {e}"
 
+# --- Prompts ---
+
+@mcp.prompt
+def demonstrate_kaleidoscope(clip_id: str) -> str:
+    """Creates a mesmerizing kaleidoscope animation.
+    Suggested for clips with vibrant colors or geometric patterns."""
+    return (
+        f"Apply the kaleidoscope effect to clip {clip_id} with 8 slices "
+        "and keep it centered. This will create a complex radial symmetry "
+        "perfect for psychedelic or abstract visuals."
+    )
+
+@mcp.prompt
+def glitch_effect_preset(clip_id: str) -> str:
+    """Applies a high-energy RGB split glitch effect.
+    Best for action sequences or music videos."""
+    return (
+        f"Apply the RGB sync effect to clip {clip_id} with the following offsets: "
+        "Red channel offset by (10, 0), Blue channel offset by (-10, 0), "
+        "and Green channel delayed by 0.05 seconds. This creates a classic "
+        "chromatic aberration glitch look."
+    )
+
+@mcp.prompt
+def matrix_intro_preset(clip_id: str) -> str:
+    """Overlays a classic 'Matrix' digital rain effect.
+    Ideal for tech-themed intros or hacker aesthetic videos."""
+    return (
+        f"Apply the Matrix digital rain effect to clip {clip_id} with "
+        "speed=200, density=0.3, and character size of 20 pixels. "
+        "The green code rain will overlay on your video, giving it that "
+        "iconic cyberpunk feel."
+    )
+
+@mcp.prompt
+def auto_framing_for_tiktok(clip_id: str) -> str:
+    """Optimizes horizontal video for vertical platforms like TikTok/Reels.
+    Uses face detection to keep the subject centered in a 9:16 frame."""
+    return (
+        f"Apply the auto-framing effect to clip {clip_id} with a target aspect ratio of 0.5625 (9:16). "
+        "The effect will automatically detect faces and smoothly track them, "
+        "making your horizontal footage look perfect on mobile."
+    )
+
+@mcp.prompt
+def rotating_cube_transition(clip_id: str) -> str:
+    """Wraps the video onto a rotating 3D cube.
+    A dynamic way to present content or transition between scenes."""
+    return (
+        f"Apply the rotating cube effect to clip {clip_id} with a speed of 60 degrees per second "
+        "in a horizontal direction. This will make your video appear as if it's painted "
+        "on the sides of a spinning 3D cube."
+    )
+
 if __name__ == "__main__":
     mcp.run(transport="http", host="0.0.0.0", port=8080)

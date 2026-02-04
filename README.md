@@ -1,6 +1,6 @@
 # mcp-moviepy
 
-A Model Context Protocol (MCP) server that provides a comprehensive interface to the [MoviePy v2.0](https://zulko.github.io/moviepy/) video editing library. 
+A Model Context Protocol (MCP) server that provides a comprehensive interface to the [MoviePy](https://zulko.github.io/moviepy/) video editing library. 
 
 This server exposes **over 70 tools** allowing LLMs to perform professional-grade video editing, compositing, effects application, and audio processing.
 
@@ -36,6 +36,7 @@ This server exposes **over 70 tools** allowing LLMs to perform professional-grad
 The server is built with `fastmcp` and is configured to run over HTTP by default.
 
 ```bash
+uv sync
 uv run main.py
 ```
 
@@ -46,8 +47,7 @@ To use this server with an MCP-compatible host (e.g., Claude Desktop), add it to
 {
   "mcpServers": {
     "moviepy": {
-      "command": "uv",
-      "args": ["run", "path/to/mcp-moviepy/main.py"]
+      "url": "http://localhost:8080/mcp"
     }
   }
 }
@@ -58,3 +58,10 @@ The server maintains an in-memory state of `CLIPS`.
 1. Tools that create or modify clips return a `clip_id` (UUID).
 2. Subsequent tools accept this `clip_id` to perform further operations.
 3. Use `list_clips` to see active objects and `delete_clip` to free system memory.
+
+
+### Custom Effects
+In the custom effects directory there are 3 different custom effects a quad mirror effect, chroma-key effect, & RGB sync. These 3 three effects give you a good base for 
+just about any complex effect that you would want to create for MoviePy most of the time you can combine one of these 3 with one of the effects that comes with MoviePy
+and minimal adjustment to achieve your desired result. I say that but I'm also someone who has been programming using Python for 20 years and been a VJ for 28 years.
+So, whats easy to me might not be easy for everyone. 

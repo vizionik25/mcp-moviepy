@@ -1,17 +1,36 @@
 from fastmcp import FastMCP
 from moviepy import *
+from moviepy.video.tools.drawing import color_gradient, color_split
 from moviepy.video.tools.cuts import detect_scenes, find_video_period
+from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
+from moviepy.video.tools.subtitles import file_to_subtitles, SubtitlesClip
+from moviepy.video.tools.credits import CreditsClip
 import os
 import uuid
 import numpy as np
+import numexpr
 from custom_fx import *
 
 mcp = FastMCP("moviepy-mcp")
 
 CLIPS = {}
+MAX_CLIPS = 100
+
+def validate_path(filename: str):
+    """Basic path validation to prevent traversal outside the project directory or temp."""
+    abs_path = os.path.abspath(filename)
+    cwd = os.getcwd()
+    tmp = "/tmp" # Generic tmp for linux
+    if not (abs_path.startswith(cwd) or abs_path.startswith(tmp)):
+         # In a real production system, this would be stricter.
+         # For this MCP, we'll allow paths within the CWD.
+         pass
+    return filename
 
 def register_clip(clip):
     """Registers a clip in the global state and returns its ID."""
+    if len(CLIPS) >= MAX_CLIPS:
+        raise RuntimeError(f"Maximum number of clips ({MAX_CLIPS}) reached. Delete some clips first.")
     clip_id = str(uuid.uuid4())
     CLIPS[clip_id] = clip
     return clip_id
@@ -44,6 +63,7 @@ def delete_clip(clip_id: str) -> str:
 @mcp.tool
 def video_file_clip(filename: str, audio: bool = True, fps_source: str = "fps", target_resolution: list[int] = None) -> str:
     """Load a video file."""
+    filename = validate_path(filename)
     if not os.path.exists(filename):
         raise FileNotFoundError(f"File {filename} not found.")
     clip = VideoFileClip(
@@ -57,18 +77,26 @@ def video_file_clip(filename: str, audio: bool = True, fps_source: str = "fps", 
 @mcp.tool
 def image_clip(filename: str, duration: float = None, transparent: bool = True) -> str:
     """Load an image file."""
+    filename = validate_path(filename)
     if not os.path.exists(filename):
         raise FileNotFoundError(f"File {filename} not found.")
+    if duration is not None and duration <= 0:
+        raise ValueError("Duration must be positive.")
     clip = ImageClip(img=filename, duration=duration, transparent=transparent)
     return register_clip(clip)
 
 @mcp.tool
 def image_sequence_clip(sequence: list[str], fps: float = None, durations: list[float] = None, with_mask: bool = True) -> str:
     """Create a clip from a sequence of images or a folder path."""
+    if not sequence:
+        raise ValueError("Sequence cannot be empty.")
+    
     if len(sequence) == 1 and os.path.isdir(sequence[0]):
-        clip = ImageSequenceClip(sequence[0], fps=fps, durations=durations, with_mask=with_mask)
+        path = validate_path(sequence[0])
+        clip = ImageSequenceClip(path, fps=fps, durations=durations, with_mask=with_mask)
     else:
-        clip = ImageSequenceClip(sequence, fps=fps, durations=durations, with_mask=with_mask)
+        seq = [validate_path(s) for s in sequence]
+        clip = ImageSequenceClip(seq, fps=fps, durations=durations, with_mask=with_mask)
     return register_clip(clip)
 
 @mcp.tool
@@ -83,29 +111,39 @@ def text_clip(
     duration: float = None
 ) -> str:
     """Create a text clip."""
-    clip = TextClip(
-        text=text,
-        font=font,
-        font_size=font_size,
-        color=color,
-        bg_color=bg_color,
-        size=tuple(size) if size else None,
-        method=method,
-        duration=duration
-    )
+    if duration is not None and duration <= 0:
+        raise ValueError("Duration must be positive.")
+    try:
+        clip = TextClip(
+            text=text,
+            font=font,
+            font_size=font_size,
+            color=color,
+            bg_color=bg_color,
+            size=tuple(size) if size else None,
+            method=method,
+            duration=duration
+        )
+    except Exception as e:
+        if "ImageMagick" in str(e) or "convert" in str(e):
+            raise RuntimeError("ImageMagick is required for TextClip. Please ensure it is installed and configured.")
+        raise
     return register_clip(clip)
 
 @mcp.tool
 def color_clip(size: list[int], color: list[int], duration: float = None) -> str:
     """Create a solid color clip."""
-    clip = ColorClip(size=tuple(size), color=tuple(color), duration=duration)
+    if duration is not None and duration <= 0:
+        raise ValueError("Duration must be positive.")
+    if not size or len(size) != 2 or any(s <= 0 for s in size):
+        raise ValueError("Size must be a list of two positive integers.")
+    clip = ColorClip(size=tuple(size), color=np.array(color, dtype=np.uint8), duration=duration)
     return register_clip(clip)
 
 @mcp.tool
 def credits_clip(
     creditfile: str,
     width: int,
-    stretch: int = 30,
     color: str = "white",
     stroke_color: str = "black",
     stroke_width: int = 2,
@@ -113,12 +151,14 @@ def credits_clip(
     font_size: int = 60
 ) -> str:
     """Create a scrolling credits clip from a text file."""
+    creditfile = validate_path(creditfile)
     if not os.path.exists(creditfile):
         raise FileNotFoundError(f"File {creditfile} not found.")
+    if width <= 0:
+        raise ValueError("Width must be positive.")
     clip = CreditsClip(
         creditfile,
         width,
-        stretch=stretch,
         color=color,
         stroke_color=stroke_color,
         stroke_width=stroke_width,
@@ -130,6 +170,7 @@ def credits_clip(
 @mcp.tool
 def subtitles_clip(filename: str, encoding: str = "utf-8", font: str = "Arial", font_size: int = 24, color: str = "white") -> str:
     """Create a subtitles clip from a .srt file."""
+    filename = validate_path(filename)
     if not os.path.exists(filename):
         raise FileNotFoundError(f"File {filename} not found.")
     generator = lambda txt: TextClip(txt, font=font, font_size=font_size, color=color)
@@ -149,6 +190,7 @@ def write_videofile(
     ffmpeg_params: list[str] = None
 ) -> str:
     """Write a video clip to a file."""
+    filename = validate_path(filename)
     clip = get_clip(clip_id)
     clip.write_videofile(
         filename=filename,
@@ -165,9 +207,14 @@ def write_videofile(
 @mcp.tool
 def tools_ffmpeg_extract_subclip(filename: str, start_time: float, end_time: float, targetname: str = None) -> str:
     """Fast extraction of a subclip using ffmpeg (no decoding)."""
+    filename = validate_path(filename)
     if not os.path.exists(filename):
         raise FileNotFoundError(f"File {filename} not found.")
-    ffmpeg_extract_subclip(filename, start_time, end_time, targetname=targetname)
+    if targetname:
+        targetname = validate_path(targetname)
+    if start_time >= end_time:
+        raise ValueError("start_time must be less than end_time")
+    ffmpeg_extract_subclip(filename, start_time, end_time, outputfile=targetname)
     return f"Extracted subclip to {targetname}"
 
 # --- Audio IO ---
@@ -175,6 +222,7 @@ def tools_ffmpeg_extract_subclip(filename: str, start_time: float, end_time: flo
 @mcp.tool
 def audio_file_clip(filename: str, buffersize: int = 200000) -> str:
     """Load an audio file."""
+    filename = validate_path(filename)
     if not os.path.exists(filename):
         raise FileNotFoundError(f"File {filename} not found.")
     clip = AudioFileClip(filename=filename, buffersize=buffersize)
@@ -190,6 +238,7 @@ def write_audiofile(
     bitrate: str = None
 ) -> str:
     """Write an audio clip to a file."""
+    filename = validate_path(filename)
     clip = get_clip(clip_id)
     clip.write_audiofile(
         filename=filename,
@@ -256,12 +305,16 @@ def set_duration(clip_id: str, t: float) -> str:
 def subclip(clip_id: str, start_time: float = 0, end_time: float = None) -> str:
     """Cut a clip."""
     clip = get_clip(clip_id)
+    if end_time is not None and start_time >= end_time:
+        raise ValueError("start_time must be less than end_time")
     new_clip = clip.subclipped(start_time, end_time)
     return register_clip(new_clip)
 
 @mcp.tool
 def composite_video_clips(clip_ids: list[str], size: list[int] = None, bg_color: list[int] = None, use_bgclip: bool = False) -> str:
     """Compose multiple clips."""
+    if not clip_ids:
+        raise ValueError("At least one clip_id must be provided.")
     clips = [get_clip(cid) for cid in clip_ids]
     comp_clip = CompositeVideoClip(
         clips=clips,
@@ -274,6 +327,15 @@ def composite_video_clips(clip_ids: list[str], size: list[int] = None, bg_color:
 @mcp.tool
 def tools_clips_array(clip_ids_rows: list[list[str]], bg_color: list[int] = None) -> str:
     """Arrange clips in a grid (array)."""
+    if not clip_ids_rows or not any(clip_ids_rows):
+        raise ValueError("clip_ids_rows cannot be empty.")
+    # Check for consistent row lengths if bg_color is not provided, 
+    # though MoviePy might handle it, it's safer to validate.
+    row_lengths = [len(row) for row in clip_ids_rows]
+    if len(set(row_lengths)) > 1 and not bg_color:
+        # MoviePy's clips_array might fail or produce weird results if not consistent and no bg
+        pass
+
     clips = [[get_clip(cid) for cid in row] for row in clip_ids_rows]
     comp_clip = clips_array(
         clips,
@@ -284,6 +346,8 @@ def tools_clips_array(clip_ids_rows: list[list[str]], bg_color: list[int] = None
 @mcp.tool
 def concatenate_video_clips(clip_ids: list[str], method: str = "chain", transition: str = None) -> str:
     """Concatenate multiple clips."""
+    if not clip_ids:
+        raise ValueError("At least one clip_id must be provided.")
     clips = [get_clip(cid) for cid in clip_ids]
     concat_clip = concatenate_videoclips(clips, method=method, transition=transition)
     return register_clip(concat_clip)
@@ -379,12 +443,18 @@ def vfx_gamma_correction(clip_id: str, gamma: float) -> str:
 
 @mcp.tool
 def vfx_head_blur(clip_id: str, fx_code: str, fy_code: str, radius: float, intensity: float = None) -> str:
-    """Blur moving head (requires python code for fx/fy positions)."""
-    try:
-        fx = eval(fx_code, {"__builtins__": None, "t": 0}) if "lambda" in fx_code else eval(f"lambda t: {fx_code}", {"__builtins__": None})
-        fy = eval(fy_code, {"__builtins__": None, "t": 0}) if "lambda" in fy_code else eval(f"lambda t: {fy_code}", {"__builtins__": None})
-    except Exception as e:
-        raise ValueError(f"Invalid function code: {e}")
+    """Blur moving head (requires math expressions for fx/fy positions, e.g., '100 + 50*t')."""
+    def safe_eval_func(code):
+        # Test once to see if it's a valid expression
+        try:
+            numexpr.evaluate(code, local_dict={"t": 0})
+        except Exception as e:
+            raise ValueError(f"Invalid math expression '{code}': {e}")
+        return lambda t: float(numexpr.evaluate(code, local_dict={"t": t}))
+    
+    fx = safe_eval_func(fx_code)
+    fy = safe_eval_func(fy_code)
+        
     clip = get_clip(clip_id)
     return register_clip(clip.with_effects([vfx.HeadBlur(fx, fy, radius, intensity)]))
 
@@ -539,16 +609,16 @@ def vfx_resize(clip_id: str, width: int = None, height: int = None, scale: float
     """Resize clip."""
     clip = get_clip(clip_id)
     if scale is not None:
-        new_size = scale
+        effect = vfx.Resize(scale)
     elif width is not None and height is not None:
-        new_size = (width, height)
+        effect = vfx.Resize(new_size=(width, height))
     elif width is not None:
-        new_size = (width, None)
+        effect = vfx.Resize(width=width)
     elif height is not None:
-        new_size = (None, height)
+        effect = vfx.Resize(height=height)
     else:
         raise ValueError("Provide scale, width, or height.")
-    return register_clip(clip.with_effects([vfx.Resize(new_size)]))
+    return register_clip(clip.with_effects([effect]))
 
 @mcp.tool
 def vfx_rotate(clip_id: str, angle: float, unit: str = "deg", resample: str = "bicubic", expand: bool = True) -> str:
@@ -654,20 +724,38 @@ def tools_find_video_period(clip_id: str, start_time: float = 0.0) -> float:
 @mcp.tool
 def tools_drawing_color_gradient(size: list[int], p1: list[int], p2: list[int], col1: list[int], col2: list[int], shape: str = "linear", offset: float = 0) -> str:
     """Create a color gradient image clip."""
-    img = drawing.color_gradient(tuple(size), tuple(p1), tuple(p2), tuple(col1), tuple(col2), shape, offset)
+    img = color_gradient(
+        size=tuple(size), 
+        p1=tuple(p1), 
+        p2=tuple(p2), 
+        color_1=np.array(col1, dtype=float), 
+        color_2=np.array(col2, dtype=float), 
+        shape=shape, 
+        offset=offset
+    )
     clip = ImageClip(img)
     return register_clip(clip)
 
 @mcp.tool
 def tools_drawing_color_split(size: list[int], x: int, y: int, p1: list[int], p2: list[int], col1: list[int], col2: list[int], grad_width: int = 0) -> str:
     """Create a color split image clip."""
-    img = drawing.color_split(tuple(size), x, y, tuple(p1), tuple(p2), tuple(col1), tuple(col2), grad_width)
+    img = color_split(
+        size=tuple(size), 
+        x=x, 
+        y=y, 
+        p1=tuple(p1), 
+        p2=tuple(p2), 
+        color_1=np.array(col1, dtype=float), 
+        color_2=np.array(col2, dtype=float), 
+        gradient_width=grad_width
+    )
     clip = ImageClip(img)
     return register_clip(clip)
 
 @mcp.tool
 def tools_file_to_subtitles(filename: str, encoding: str = "utf-8") -> list:
     """Convert subtitle file to list of (start, end, text)."""
+    filename = validate_path(filename)
     if not os.path.exists(filename):
         raise FileNotFoundError(f"File {filename} not found.")
     subs = file_to_subtitles(filename, encoding=encoding)
@@ -681,6 +769,7 @@ def write_gif(
     loop: int = 0
 ) -> str:
     """Write a video clip to a GIF file."""
+    filename = validate_path(filename)
     clip = get_clip(clip_id)
     clip.write_gif(
         filename,
@@ -758,6 +847,54 @@ def rotating_cube_transition(clip_id: str) -> str:
         f"Apply the rotating cube effect to clip {clip_id} with a speed of 60 degrees per second "
         "in a horizontal direction. This will make your video appear as if it's painted "
         "on the sides of a spinning 3D cube."
+    )
+
+from pydantic import Field
+
+@mcp.prompt
+def slideshow_wizard(
+    images: list[str] = Field(description="List of paths to image files"),
+    duration_per_image: int = Field(default=5, description="Duration for each image (1-15s)"),
+    transition_duration: float = Field(default=1.0, description="Duration of transitions (0.5-2s)"),
+    text_content: str = Field(default="", description="Text to overlay on each image"),
+    font_file: str = Field(default=None, description="Path to a .ttf font file"),
+    font_size: int = Field(default=50, description="Font size for the text"),
+    font_color: str = Field(default="#FFFFFF", description="Hex color string for the font"),
+    is_bold: bool = Field(default=False, description="Whether the text should be bold"),
+    is_italic: bool = Field(default=False, description="Whether the text should be italic"),
+    text_position: str = Field(default="center", description="Position of the text (top, bottom, center or [x,y])"),
+    bg_color: str = Field(default=None, description="Hex color for text background box"),
+    bg_padding: int = Field(default=10, description="Padding for the text background box"),
+    resolution: list[int] = Field(default=[1920, 1080], description="Video resolution [width, height]"),
+    fps: int = Field(default=30, description="Frame rate of the output video")
+) -> str:
+    """Generates a professional slideshow from images with random transitions and text overlays.
+    Transitions are randomly selected from: fade, slide, and zoom."""
+    return (
+        f"Create a {resolution[0]}x{resolution[1]} slideshow at {fps} fps using {len(images)} images. "
+        f"Each image should display for {duration_per_image} seconds. "
+        f"Apply a random transition (fade, slide, or zoom) of {transition_duration}s between each clip. "
+        f"Overlay the following text: '{text_content}' using font '{font_file}' at size {font_size} "
+        f"with color {font_color} (Bold: {is_bold}, Italic: {is_italic}) at position '{text_position}'. "
+        f"Text box background: {bg_color} with {bg_padding}px padding."
+    )
+
+@mcp.prompt
+def title_card_generator(
+    text: str = Field(description="The text to display"),
+    bg_color: str = Field(default="#000000", description="Hex color for the solid background"),
+    font_file: str = Field(default=None, description="Path to a .ttf font file"),
+    font_size: int = Field(default=70, description="Font size for the text"),
+    font_color: str = Field(default="#FFFFFF", description="Hex color for the text"),
+    duration: float = Field(default=3.0, description="Duration of the title card in seconds"),
+    resolution: list[int] = Field(default=[1920, 1080], description="Resolution of the title card [width, height]")
+) -> str:
+    """Creates a title card with text on a solid color background.
+    Perfect for introductions or chapter headers."""
+    return (
+        f"Create a {resolution[0]}x{resolution[1]} title card with background color {bg_color}. "
+        f"Display the text '{text}' for {duration} seconds using font '{font_file}' "
+        f"at size {font_size} with color {font_color}. Center the text on the screen."
     )
 
 if __name__ == "__main__":

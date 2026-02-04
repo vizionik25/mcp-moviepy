@@ -3,3 +3,6 @@ from .chroma_key import ChromaKey
 from .rgb_sync import RGBSync
 from .kaleidoscope import Kaleidoscope
 from .matrix import Matrix
+from .auto_framing import AutoFraming
+from .clone_grid import CloneGrid
+from .rotating_cube import RotatingCube

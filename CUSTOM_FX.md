@@ -7,7 +7,9 @@ This document provides documentation for the custom effects implemented in the `
 2. [Kaleidoscope](#kaleidoscope)
 3. [RGB Sync (Glitch)](#rgb-sync-glitch)
 4. [Chroma Key (Green Screen)](#chroma-key-green-screen)
-5. [Quad Mirror](#quad-mirror)
+5. [Auto Framing](#auto-framing)
+6. [Clone Grid](#clone-grid)
+7. [Quad Mirror](#quad-mirror)
 
 ---
 
@@ -61,6 +63,43 @@ An advanced chroma key effect that generates a transparency mask based on Euclid
 - `color` (tuple, default: `(0, 255, 0)`): Target RGB color to remove.
 - `threshold` (float, default: `50`): Distance threshold below which pixels are fully transparent.
 - `softness` (float, default: `20`): Range over which pixels transition from transparent to opaque.
+
+---
+
+## Auto Framing
+**File:** `custom_fx/auto_framing.py`  
+**Class:** `AutoFraming`
+
+Automatically crops and centers the frame on a detected face or subject. This is particularly useful for converting horizontal (16:9) video to vertical (9:16) for social media while ensuring the speaker remains in frame. It uses Haar Cascades for face detection and applies exponential smoothing to prevent jumpy camera movements.
+
+### Parameters
+- `target_aspect_ratio` (float, default: `0.5625` (9/16)): The desired aspect ratio of the output.
+- `smoothing` (float, default: `0.9`): Smoothing factor (0.0 to 1.0). Higher values result in smoother, slower camera tracking.
+- `focus_func` (callable, optional): A custom function to determine the focus point if face detection is not desired or sufficient.
+
+---
+
+## Clone Grid
+**File:** `custom_fx/clone_grid.py`  
+**Class:** `CloneGrid`
+
+Creates a grid of clones of the original clip. The effect automatically determines the optimal number of rows and columns to fit the requested number of clones into the original frame dimensions.
+
+### Parameters
+- `n_clones` (int, default: `4`): The number of clones to display. Recommended values are powers of 2 (2, 4, 8, 16, 32, 64).
+
+---
+
+## Rotating Cube
+**File:** `custom_fx/rotating_cube.py`  
+**Class:** `RotatingCube`
+
+Simulates a 3D rotating cube (or "cube inside") effect where the video is mapped to the faces of a virtual cube. The viewer perceives the rotation from a fixed perspective, seeing faces move in and out of view.
+
+### Parameters
+- `speed` (float, default: `45`): Rotation speed in degrees per second.
+- `direction` (str, default: `"horizontal"`): The axis of rotation. Options: `"horizontal"` (rotates around the vertical Y-axis) or `"vertical"` (rotates around the horizontal X-axis).
+- `zoom` (float, default: `1.0`): Perspective zoom factor. Adjusts the field of view and perceived distance to the cube.
 
 ---
 

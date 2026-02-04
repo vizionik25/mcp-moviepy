@@ -517,6 +517,24 @@ def vfx_matrix(
     return register_clip(clip.with_effects([Matrix(speed, density, chars, color, font_size)]))
 
 @mcp.tool
+def vfx_auto_framing(clip_id: str, target_aspect_ratio: float = 9/16, smoothing: float = 0.9) -> str:
+    """Automatically crops and centers the frame on a detected face or subject."""
+    clip = get_clip(clip_id)
+    return register_clip(clip.with_effects([AutoFraming(target_aspect_ratio, smoothing)]))
+
+@mcp.tool
+def vfx_clone_grid(clip_id: str, n_clones: int = 4) -> str:
+    """Creates a grid of clones of the original clip (e.g., 2, 4, 8, 16, 32, 64)."""
+    clip = get_clip(clip_id)
+    return register_clip(clip.with_effects([CloneGrid(n_clones)]))
+
+@mcp.tool
+def vfx_rotating_cube(clip_id: str, speed: float = 45, direction: str = "horizontal", zoom: float = 1.0) -> str:
+    """Simulates a 3D rotating cube effect with the video mapped to its faces."""
+    clip = get_clip(clip_id)
+    return register_clip(clip.with_effects([RotatingCube(speed, direction, zoom)]))
+
+@mcp.tool
 def vfx_resize(clip_id: str, width: int = None, height: int = None, scale: float = None) -> str:
     """Resize clip."""
     clip = get_clip(clip_id)

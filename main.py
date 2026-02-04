@@ -1,14 +1,12 @@
 from fastmcp import FastMCP
 from moviepy import *
-"""DO NOT IMPORT ANYTHING FROM MOVIEPY AS THE ABOVE LINE IMPORTS EVERYTHING"""
 import os
 import uuid
 import numpy as np
-from custom_fx import QuadMirror, ChromaKey, RGBSync
+from custom_fx import *
 
 mcp = FastMCP("moviepy-mcp")
 
-# Global state to store clips
 CLIPS = {}
 
 def register_clip(clip):
@@ -47,7 +45,6 @@ def video_file_clip(filename: str, audio: bool = True, fps_source: str = "fps", 
     """Load a video file."""
     if not os.path.exists(filename):
         raise FileNotFoundError(f"File {filename} not found.")
-    
     clip = VideoFileClip(
         filename=filename,
         audio=audio,
@@ -61,14 +58,12 @@ def image_clip(filename: str, duration: float = None, transparent: bool = True) 
     """Load an image file."""
     if not os.path.exists(filename):
         raise FileNotFoundError(f"File {filename} not found.")
-    
     clip = ImageClip(img=filename, duration=duration, transparent=transparent)
     return register_clip(clip)
 
 @mcp.tool
 def image_sequence_clip(sequence: list[str], fps: float = None, durations: list[float] = None, with_mask: bool = True) -> str:
     """Create a clip from a sequence of images or a folder path."""
-    # If sequence has 1 item and it's a folder, use it
     if len(sequence) == 1 and os.path.isdir(sequence[0]):
         clip = ImageSequenceClip(sequence[0], fps=fps, durations=durations, with_mask=with_mask)
     else:
@@ -119,7 +114,6 @@ def credits_clip(
     """Create a scrolling credits clip from a text file."""
     if not os.path.exists(creditfile):
         raise FileNotFoundError(f"File {creditfile} not found.")
-    
     clip = CreditsClip(
         creditfile,
         width,
@@ -137,10 +131,7 @@ def subtitles_clip(filename: str, encoding: str = "utf-8", font: str = "Arial", 
     """Create a subtitles clip from a .srt file."""
     if not os.path.exists(filename):
         raise FileNotFoundError(f"File {filename} not found.")
-    
-    # We use a lambda to generate TextClips for each subtitle
     generator = lambda txt: TextClip(txt, font=font, font_size=font_size, color=color)
-    
     clip = SubtitlesClip(filename, make_textclip=generator, encoding=encoding)
     return register_clip(clip)
 
@@ -175,7 +166,6 @@ def tools_ffmpeg_extract_subclip(filename: str, start_time: float, end_time: flo
     """Fast extraction of a subclip using ffmpeg (no decoding)."""
     if not os.path.exists(filename):
         raise FileNotFoundError(f"File {filename} not found.")
-    
     ffmpeg_extract_subclip(filename, start_time, end_time, targetname=targetname)
     return f"Extracted subclip to {targetname}"
 
@@ -186,7 +176,6 @@ def audio_file_clip(filename: str, buffersize: int = 200000) -> str:
     """Load an audio file."""
     if not os.path.exists(filename):
         raise FileNotFoundError(f"File {filename} not found.")
-    
     clip = AudioFileClip(filename=filename, buffersize=buffersize)
     return register_clip(clip)
 
@@ -226,7 +215,6 @@ def set_position(clip_id: str, x: int = None, y: int = None, pos_str: str = None
         pos = ("center", y)
     else:
         raise ValueError("Provide x, y, or pos_str")
-    
     return register_clip(clip.with_position(pos, relative=relative))
 
 @mcp.tool
@@ -396,7 +384,6 @@ def vfx_head_blur(clip_id: str, fx_code: str, fy_code: str, radius: float, inten
         fy = eval(fy_code, {"__builtins__": None, "t": 0}) if "lambda" in fy_code else eval(f"lambda t: {fy_code}", {"__builtins__": None})
     except Exception as e:
         raise ValueError(f"Invalid function code: {e}")
-
     clip = get_clip(clip_id)
     return register_clip(clip.with_effects([vfx.HeadBlur(fx, fy, radius, intensity)]))
 
@@ -618,7 +605,6 @@ def tools_detect_scenes(clip_id: str, luminosity_threshold: int = 10) -> list:
     """Detect scenes in a clip. Returns list of timestamps."""
     clip = get_clip(clip_id)
     cuts, luminosities = detect_scenes(clip, luminosity_threshold=luminosity_threshold)
-    # Convert numpy arrays/tuples to list of lists for JSON serialization
     return [[float(start), float(end)] for start, end in cuts]
 
 @mcp.tool
@@ -630,7 +616,6 @@ def tools_find_video_period(clip_id: str, start_time: float = 0.0) -> float:
 @mcp.tool
 def tools_drawing_color_gradient(size: list[int], p1: list[int], p2: list[int], col1: list[int], col2: list[int], shape: str = "linear", offset: float = 0) -> str:
     """Create a color gradient image clip."""
-    # This returns an ImageClip (VideoClip)
     img = drawing.color_gradient(tuple(size), tuple(p1), tuple(p2), tuple(col1), tuple(col2), shape, offset)
     clip = ImageClip(img)
     return register_clip(clip)
@@ -648,7 +633,6 @@ def tools_file_to_subtitles(filename: str, encoding: str = "utf-8") -> list:
     if not os.path.exists(filename):
         raise FileNotFoundError(f"File {filename} not found.")
     subs = file_to_subtitles(filename, encoding=encoding)
-    # Convert to JSON friendly format
     return [[float(s), float(e), txt] for s, e, txt in subs]
 
 @mcp.tool
@@ -688,10 +672,6 @@ def tools_find_audio_period(clip_id: str, start_time: float = 0.0) -> float:
 def tools_check_installation() -> str:
     """Check MoviePy installation and dependencies."""
     from moviepy.config import check
-    # Check prints to stdout, we need to capture it or just run it.
-    # It doesn't return string.
-    # We will try to capture stdout? fastmcp doesn't support that easily.
-    # We will just run it and say done.
     try:
         check()
         return "Installation check ran (check server logs)."

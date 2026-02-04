@@ -504,6 +504,19 @@ def vfx_kaleidoscope(clip_id: str, n_slices: int = 6, x: int = None, y: int = No
     return register_clip(clip.with_effects([Kaleidoscope(n_slices, x, y)]))
 
 @mcp.tool
+def vfx_matrix(
+    clip_id: str, 
+    speed: float = 150, 
+    density: float = 0.2, 
+    chars: str = "0123456789ABCDEF", 
+    color: str = "green", 
+    font_size: int = 16
+) -> str:
+    """Apply a Matrix-style digital rain effect with scrolling characters."""
+    clip = get_clip(clip_id)
+    return register_clip(clip.with_effects([Matrix(speed, density, chars, color, font_size)]))
+
+@mcp.tool
 def vfx_resize(clip_id: str, width: int = None, height: int = None, scale: float = None) -> str:
     """Resize clip."""
     clip = get_clip(clip_id)

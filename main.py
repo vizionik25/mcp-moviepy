@@ -1,5 +1,6 @@
 from fastmcp import FastMCP
 from moviepy import *
+from moviepy.video.tools.cuts import detect_scenes, find_video_period
 import os
 import uuid
 import numpy as np
@@ -497,6 +498,12 @@ def vfx_rgb_sync(
     )]))
 
 @mcp.tool
+def vfx_kaleidoscope(clip_id: str, n_slices: int = 6, x: int = None, y: int = None) -> str:
+    """Apply a kaleidoscope effect with radial symmetry."""
+    clip = get_clip(clip_id)
+    return register_clip(clip.with_effects([Kaleidoscope(n_slices, x, y)]))
+
+@mcp.tool
 def vfx_resize(clip_id: str, width: int = None, height: int = None, scale: float = None) -> str:
     """Resize clip."""
     clip = get_clip(clip_id)
@@ -513,10 +520,10 @@ def vfx_resize(clip_id: str, width: int = None, height: int = None, scale: float
     return register_clip(clip.with_effects([vfx.Resize(new_size)]))
 
 @mcp.tool
-def vfx_rotate(clip_id: str, angle: float, resample: str = "bicubic", expand: bool = True) -> str:
+def vfx_rotate(clip_id: str, angle: float, unit: str = "deg", resample: str = "bicubic", expand: bool = True) -> str:
     """Rotate clip."""
     clip = get_clip(clip_id)
-    return register_clip(clip.with_effects([vfx.Rotate(angle, resample, expand)]))
+    return register_clip(clip.with_effects([vfx.Rotate(angle, unit=unit, resample=resample, expand=expand)]))
 
 @mcp.tool
 def vfx_scroll(clip_id: str, w: int = None, h: int = None, x_speed: float = 0, y_speed: float = 0, x_start: float = 0, y_start: float = 0) -> str:
@@ -640,33 +647,23 @@ def write_gif(
     clip_id: str,
     filename: str,
     fps: float = None,
-    program: str = "imageio",
-    opt: str = "OptimizePlus",
-    fuzz: int = 1,
-    loop: int = 0,
-    dispose: bool = False,
-    colors: int = None
+    loop: int = 0
 ) -> str:
     """Write a video clip to a GIF file."""
     clip = get_clip(clip_id)
     clip.write_gif(
         filename,
         fps=fps,
-        program=program,
-        opt=opt,
-        fuzz=fuzz,
-        loop=loop,
-        dispose=dispose,
-        colors=colors
+        loop=loop
     )
     return f"Successfully wrote GIF to {filename}"
 
 @mcp.tool
-def tools_find_audio_period(clip_id: str, start_time: float = 0.0) -> float:
+def tools_find_audio_period(clip_id: str) -> float:
     """Find the period of the audio signal."""
     from moviepy.audio.tools.cuts import find_audio_period
     clip = get_clip(clip_id)
-    return float(find_audio_period(clip, start_time=start_time))
+    return float(find_audio_period(clip))
 
 @mcp.tool
 def tools_check_installation() -> str:

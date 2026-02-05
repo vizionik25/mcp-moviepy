@@ -1,0 +1,3 @@
+# This is the directory where you need to put all your video files to be worked.
+# If running in a docker container you will either need to restart the container everytime you move files in and out or...
+# You can setup directory sharing inside of Docker Desktop and map this Directory as shared so that you dont have to restart container everytime.

@@ -70,7 +70,8 @@ An advanced chroma key effect that generates a transparency mask based on Euclid
 **File:** `custom_fx/auto_framing.py`  
 **Class:** `AutoFraming`
 
-Automatically crops and centers the frame on a detected face or subject. This is particularly useful for converting horizontal (16:9) video to vertical (9:16) for social media while ensuring the speaker remains in frame. It uses Haar Cascades for face detection and applies exponential smoothing to prevent jumpy camera movements.
+Automatically crops and centers the frame on a detected face or subject. This is particularly useful for converting horizontal (16:9) video to vertical (9:16) for social media while ensuring the speaker remains in frame. 
+It uses Haar Cascades for face detection and applies exponential smoothing to prevent jumpy camera movements.
 
 ### Parameters
 - `target_aspect_ratio` (float, default: `0.5625` (9/16)): The desired aspect ratio of the output.

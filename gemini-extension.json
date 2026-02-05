@@ -2,16 +2,12 @@
   "name": "mcp-moviepy-extension",
   "version": "0.1.0",
   "description": "An extension for Gemini CLI that provides video editing capabilities through moviepy.",
-  "author": "Gemini",
+  "author": "Charles Nichols - https://github.com/vizionik25",
   "mcpServers": [
     {
       "id": "mcp-moviepy",
-      "command": "uv",
-      "args": [
-        "run",
-        "main.py"
-      ],
-      "transport": "stdio"
+      "url": "http://localhost:8080/mcp",
+      "transport": "http"
     }
   ],
   "skills": [

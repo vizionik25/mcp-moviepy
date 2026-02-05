@@ -16,6 +16,9 @@ mcp = FastMCP("moviepy-mcp")
 CLIPS = {}
 MAX_CLIPS = 100
 
+# --- Clip Management ---
+
+@mcp.tool
 def validate_path(filename: str):
     """Basic path validation to prevent traversal outside the project directory or temp."""
     abs_path = os.path.abspath(filename)
@@ -27,6 +30,7 @@ def validate_path(filename: str):
          pass
     return filename
 
+@mcp.tool
 def register_clip(clip):
     """Registers a clip in the global state and returns its ID."""
     if len(CLIPS) >= MAX_CLIPS:
@@ -35,6 +39,7 @@ def register_clip(clip):
     CLIPS[clip_id] = clip
     return clip_id
 
+@mcp.tool
 def get_clip(clip_id: str):
     """Retrieves a clip by ID. Raises ValueError if not found."""
     if clip_id not in CLIPS:
@@ -90,7 +95,6 @@ def image_sequence_clip(sequence: list[str], fps: float = None, durations: list[
     """Create a clip from a sequence of images or a folder path."""
     if not sequence:
         raise ValueError("Sequence cannot be empty.")
-    
     if len(sequence) == 1 and os.path.isdir(sequence[0]):
         path = validate_path(sequence[0])
         clip = ImageSequenceClip(path, fps=fps, durations=durations, with_mask=with_mask)
@@ -451,10 +455,8 @@ def vfx_head_blur(clip_id: str, fx_code: str, fy_code: str, radius: float, inten
         except Exception as e:
             raise ValueError(f"Invalid math expression '{code}': {e}")
         return lambda t: float(numexpr.evaluate(code, local_dict={"t": t}))
-    
     fx = safe_eval_func(fx_code)
     fy = safe_eval_func(fy_code)
-        
     clip = get_clip(clip_id)
     return register_clip(clip.with_effects([vfx.HeadBlur(fx, fy, radius, intensity)]))
 
@@ -575,11 +577,11 @@ def vfx_kaleidoscope(clip_id: str, n_slices: int = 6, x: int = None, y: int = No
 
 @mcp.tool
 def vfx_matrix(
-    clip_id: str, 
-    speed: float = 150, 
-    density: float = 0.2, 
-    chars: str = "0123456789ABCDEF", 
-    color: str = "green", 
+    clip_id: str,
+    speed: float = 150,
+    density: float = 0.2,
+    chars: str = "0123456789ABCDEF",
+    color: str = "green",
     font_size: int = 16
 ) -> str:
     """Apply a Matrix-style digital rain effect with scrolling characters."""
@@ -732,12 +734,12 @@ def tools_find_video_period(clip_id: str, start_time: float = 0.0) -> float:
 def tools_drawing_color_gradient(size: list[int], p1: list[int], p2: list[int], col1: list[int], col2: list[int], shape: str = "linear", offset: float = 0) -> str:
     """Create a color gradient image clip."""
     img = color_gradient(
-        size=tuple(size), 
-        p1=tuple(p1), 
-        p2=tuple(p2), 
-        color_1=np.array(col1, dtype=float), 
-        color_2=np.array(col2, dtype=float), 
-        shape=shape, 
+        size=tuple(size),
+        p1=tuple(p1),
+        p2=tuple(p2),
+        color_1=np.array(col1, dtype=float),
+        color_2=np.array(col2, dtype=float),
+        shape=shape,
         offset=offset
     )
     clip = ImageClip(img)
@@ -747,13 +749,13 @@ def tools_drawing_color_gradient(size: list[int], p1: list[int], p2: list[int], 
 def tools_drawing_color_split(size: list[int], x: int, y: int, p1: list[int], p2: list[int], col1: list[int], col2: list[int], grad_width: int = 0) -> str:
     """Create a color split image clip."""
     img = color_split(
-        size=tuple(size), 
-        x=x, 
-        y=y, 
-        p1=tuple(p1), 
-        p2=tuple(p2), 
-        color_1=np.array(col1, dtype=float), 
-        color_2=np.array(col2, dtype=float), 
+        size=tuple(size),
+        x=x,
+        y=y,
+        p1=tuple(p1),
+        p2=tuple(p2),
+        color_1=np.array(col1, dtype=float),
+        color_2=np.array(col2, dtype=float),
         gradient_width=grad_width
     )
     clip = ImageClip(img)

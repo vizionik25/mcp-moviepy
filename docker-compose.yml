@@ -1,0 +1,11 @@
+services:
+  mcp-moviepy:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+    # Restart policy to ensure the server stays up
+    restart: unless-stopped

@@ -103,6 +103,44 @@ uv run main.py
 }
 ```
 
+## 🐳 Docker Support
+
+You can run this MCP server as a containerized service. This is the recommended approach as it handles all complex system dependencies like FFmpeg, ImageMagick (with correct security policies), and OpenCV libraries automatically.
+
+### Build and Run with Docker
+
+1. **Prepare your data**: Create a `data` directory in the project root and place the video/image files you want to edit inside it:
+   ```bash
+   mkdir -p data
+   # Copy your media files into ./data
+   ```
+
+2. **Build the image:**
+   ```bash
+   docker build -t mcp-moviepy .
+   ```
+
+3. **Run the container:**
+   ```bash
+   docker run -p 8080:8080 -v $(pwd)/data:/app/data mcp-moviepy
+   ```
+
+### Using Docker Compose (Recommended)
+
+The included `docker-compose.yml` simplifies setup and persistence:
+
+```bash
+docker compose up --build
+```
+
+### Configuration Details
+
+- **Port Mapping**: The container exposes port `8080`. The MCP endpoint will be accessible at `http://localhost:8080/mcp`.
+- **Volume Mounts**: The `./data` directory on your host is mapped to `/app/data` in the container. 
+  - **Important**: Place your source videos/images in `./data` and reference them as `/app/data/filename.mp4` when using MCP tools.
+- **Environment Variables**:
+  - `PYTHONUNBUFFERED=1`: Ensures Python logs are flushed to the terminal immediately.
+
 ## 🧠 State Management
 
 The server maintains an in-memory state of `CLIPS`. 

@@ -1,10 +1,14 @@
-# mcp-moviepy
+# mcp-moviepy Gemini-CLI Extension
+
+[![MCP](https://img.shields.io/badge/MCP-Compatible-blue)](https://modelcontextprotocol.io)
+[![Python](https://img.shields.io/badge/Python-3.12+-green.svg)](https://www.python.org/)
+[![MoviePy](https://img.shields.io/badge/MoviePy-2.2+-orange.svg)](https://zulko.github.io/moviepy/)
 
 A Model Context Protocol (MCP) server that provides a comprehensive interface to the [MoviePy](https://zulko.github.io/moviepy/) video editing library. 
 
 This server exposes **over 70 tools** allowing LLMs to perform professional-grade video editing, compositing, effects application, and audio processing.
 
-## Features
+## 🚀 Features
 
 ### IO & Creation
 - **Load**: `video_file_clip`, `audio_file_clip`, `image_clip`, `image_sequence_clip`.
@@ -24,24 +28,70 @@ This server exposes **over 70 tools** allowing LLMs to perform professional-grad
 - **Motion**: `vfx_slide_in`, `vfx_slide_out`, `vfx_head_blur`.
 - **Masking**: `vfx_mask_color`, `vfx_masks_and`, `vfx_masks_or`.
 
+### Custom Advanced Effects
+This server includes several high-performance custom effects:
+- **`vfx_matrix`**: Classic "Matrix" digital rain overlay.
+- **`vfx_kaleidoscope`**: Radial symmetry effect with custom slices.
+- **`vfx_rgb_sync`**: Chromatic aberration and glitch temporal offsets.
+- **`vfx_chroma_key`**: Advanced green screen removal with threshold and softness.
+- **`vfx_auto_framing`**: Intelligent face/subject tracking and cropping for vertical video.
+- **`vfx_clone_grid`**: Multi-clone grid layout (2x2, 4x4, etc.).
+- **`vfx_rotating_cube`**: 3D perspective cube mapping.
+- **`vfx_quad_mirror`**: Four-way mirror symmetry.
+- **`vfx_kaleidoscope_cube`**: Hybrid effect combining radial symmetry with 3D rotation.
+
 ### Audio Effects (afx)
 - `afx_volume_multiply`, `afx_multiply_stereo_volume`, `afx_audio_fade_in`, `afx_audio_fade_out`, `afx_audio_delay`, `afx_audio_loop`, `afx_audio_normalize`.
 
-### Analysis
-- `tools_detect_scenes`, `tools_find_video_period`, `tools_find_audio_period`, `tools_file_to_subtitles`.
+### Analysis & Utilities
+- `tools_detect_scenes`: Automatic scene cut detection.
+- `tools_find_video_period`: Frequency analysis for repetitive motion.
+- `tools_find_audio_period`: Tempo/period detection for audio.
+- `tools_file_to_subtitles`: Parse subtitle files.
 
-## Configuration
+## 🛠 Prerequisites
 
-### Running the Server
-The server is built with `fastmcp` and is configured to run over HTTP by default.
+- **Python 3.12+**
+- **FFmpeg**: Required by MoviePy for video processing.
+- **ImageMagick**: Required for `text_clip` and `credits_clip`.
+- **uv**: Recommended Python package manager.
+
+### Gemini-CLI Exclusive Includes 2 custom skills moviepy-effects & mcp-prompt-generator 
+
+moviepy-effects is for generating custom effects for the moviepy package and will automatically create the file in the custom_fx directory plus will also
+add it to the mcp-moviepy server as a tool & will automatically generate test scripts for it. mcp-prompt-generator is for generating custom prompts for gemini-cli
+but is only for working with mcp-moviepy MCP server it has hardcoded within its instructions documentation from moviepy's docs. 
+
+## 📦 Installation
+
+### As a Gemini-CLI Extension
 
 ```bash
+gemini extensions install https://github.com/vizionik25/mcp-moviepy.git
+```
+
+### Or Install it as a Standalone MCP Server to be used with other clients (e.g. Claude Code, Windsurf, Cursor)
+
+```bash
+git clone https://github.com/your-repo/mcp-moviepy.git
+cd mcp-moviepy
 uv sync
+```
+the uv sync will handle venv creation and install all python packages in a single step but you will still need to activate it.
+
+```bash
+source .venv/bin/activate
+```
+
+## 🏃 Running the Server
+
+The server is built with `fastmcp` and runs over HTTP by default.
+
+```bash
 uv run main.py
 ```
 
 ### Adding to MCP Hosts
-To use this server with an MCP-compatible host (e.g., Claude Desktop), add it to your configuration:
 
 ```json
 {
@@ -53,15 +103,33 @@ To use this server with an MCP-compatible host (e.g., Claude Desktop), add it to
 }
 ```
 
-## State Management
+## 🧠 State Management
+
 The server maintains an in-memory state of `CLIPS`. 
-1. Tools that create or modify clips return a `clip_id` (UUID).
-2. Subsequent tools accept this `clip_id` to perform further operations.
-3. Use `list_clips` to see active objects and `delete_clip` to free system memory.
 
+1. **Clip IDs**: Tools that create or modify clips return a `clip_id` (UUID string).
+2. **Chaining**: Pass the `clip_id` to subsequent tools to perform further operations.
+3. **Memory**: Use `list_clips` to see active objects and `delete_clip` to free system memory.
+4. **Auto Memory Cleanup**: It has file count and total file size limits in place to prevent filling up all your ram
+and ultimately prevent crashing your machine.
 
-### Custom Effects
-In the custom effects directory there are 3 different custom effects a quad mirror effect, chroma-key effect, & RGB sync. These 3 three effects give you a good base for 
-just about any complex effect that you would want to create for MoviePy most of the time you can combine one of these 3 with one of the effects that comes with MoviePy
-and minimal adjustment to achieve your desired result. I say that but I'm also someone who has been programming using Python for 20 years and been a VJ for 28 years.
-So, whats easy to me might not be easy for everyone. 
+## 💡 Prompts
+
+The server includes several "Prompt Templates" that guide the LLM in performing complex tasks:
+- `slideshow_wizard`: Create a professional slideshow from images with transitions.
+- `glitch_effect_preset`: Apply a high-energy glitch aesthetic.
+- `auto_framing_for_tiktok`: Convert horizontal video to vertical for social media.
+- `matrix_intro_preset`: Apply the classic code-rain overlay.
+- `rotating_cube_transition`: Create a 3D spinning transition.
+
+## 🧪 Development
+
+Run tests to verify installation:
+
+```bash
+uv run pytest tests/test_e2e.py
+```
+
+## 📄 License
+
+MIT

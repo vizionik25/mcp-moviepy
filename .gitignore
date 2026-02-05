@@ -11,7 +11,11 @@ wheels/
 
 # Conductor
 conductor/
+
+# Misc
 moviepy-effects.skill
 GEMINI.md
 moviepy-reference/
 .gemini/
+*.mp4
+*.mp3

@@ -605,6 +605,13 @@ def vfx_rotating_cube(clip_id: str, speed: float = 45, direction: str = "horizon
     return register_clip(clip.with_effects([RotatingCube(speed, direction, zoom)]))
 
 @mcp.tool
+def vfx_kaleidoscope_cube(clip_id: str, kaleidoscope_params: dict = None, cube_params: dict = None) -> str:
+    """Apply a KaleidoscopeCube effect."""
+    clip = get_clip(clip_id)
+    effect = KaleidoscopeCube(kaleidoscope_params=kaleidoscope_params, cube_params=cube_params)
+    return register_clip(effect.apply(clip))
+
+@mcp.tool
 def vfx_resize(clip_id: str, width: int = None, height: int = None, scale: float = None) -> str:
     """Resize clip."""
     clip = get_clip(clip_id)
@@ -895,6 +902,20 @@ def title_card_generator(
         f"Create a {resolution[0]}x{resolution[1]} title card with background color {bg_color}. "
         f"Display the text '{text}' for {duration} seconds using font '{font_file}' "
         f"at size {font_size} with color {font_color}. Center the text on the screen."
+    )
+
+@mcp.prompt
+def demonstrate_kaleidoscope_cube(
+    clip_id: str,
+    kaleidoscope_slices: int = Field(default=12, description="Number of kaleidoscope slices"),
+    cube_speed: float = Field(default=90, description="Cube rotation speed in degrees per second"),
+    cube_direction: str = Field(default="horizontal", description="Cube rotation direction ('horizontal' or 'vertical')")
+) -> str:
+    """Demonstrates the KaleidoscopeCube effect by applying it to a clip."""
+    return (
+        f"Apply the KaleidoscopeCube effect to clip {clip_id} with "
+        f"{kaleidoscope_slices} kaleidoscope slices, a cube rotation speed of {cube_speed} deg/s "
+        f"in the {cube_direction} direction. Then, save the resulting video as 'kaleidoscope_cube_demo.mp4'."
     )
 
 if __name__ == "__main__":

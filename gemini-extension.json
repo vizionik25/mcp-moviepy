@@ -1,0 +1,25 @@
+{
+  "name": "mcp-moviepy-extension",
+  "version": "0.1.0",
+  "description": "An extension for Gemini CLI that provides video editing capabilities through moviepy.",
+  "author": "Gemini",
+  "mcpServers": [
+    {
+      "id": "mcp-moviepy",
+      "command": "uv",
+      "args": [
+        "run",
+        "main.py"
+      ],
+      "transport": "stdio"
+    }
+  ],
+  "skills": [
+    {
+      "path": ".gemini/skills/moviepy-effects"
+    },
+    {
+      "path": ".gemini/skills/mcp-prompt-generator"
+    }
+  ]
+}

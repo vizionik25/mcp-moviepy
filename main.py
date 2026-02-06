@@ -10,6 +10,9 @@ import uuid
 import numpy as np
 import numexpr
 from custom_fx import *
+from typing import Any
+from mcp_ui_server import create_ui_resource, UIMetadataKey
+from ui import DASHBOARD_HTML
 
 mcp = FastMCP("moviepy-mcp")
 
@@ -18,7 +21,6 @@ MAX_CLIPS = 100
 
 # --- Clip Management ---
 
-@mcp.tool
 def validate_path(filename: str):
     """Basic path validation to prevent traversal outside the project directory or temp."""
     abs_path = os.path.abspath(filename)
@@ -30,7 +32,6 @@ def validate_path(filename: str):
          pass
     return filename
 
-@mcp.tool
 def register_clip(clip):
     """Registers a clip in the global state and returns its ID."""
     if len(CLIPS) >= MAX_CLIPS:
@@ -39,7 +40,6 @@ def register_clip(clip):
     CLIPS[clip_id] = clip
     return clip_id
 
-@mcp.tool
 def get_clip(clip_id: str):
     """Retrieves a clip by ID. Raises ValueError if not found."""
     if clip_id not in CLIPS:
@@ -818,6 +818,18 @@ def tools_check_installation() -> str:
         return "Installation check ran (check server logs)."
     except Exception as e:
         return f"Check failed: {e}"
+
+@mcp.tool
+def ui_dashboard() -> Any:
+    """Launch the MoviePy MCP Dashboard."""
+    return create_ui_resource({
+        "uri": "ui://dashboard",
+        "content": {"type": "rawHtml", "htmlString": DASHBOARD_HTML},
+        "encoding": "text",
+        "uiMetadata": {
+            UIMetadataKey.PREFERRED_FRAME_SIZE: ["800px", "600px"]
+        }
+    })
 
 # --- Prompts ---
 

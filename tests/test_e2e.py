@@ -173,7 +173,7 @@ def test_kaleidoscope_cube():
     cid = color_clip.fn([100,100], [255,0,0], duration=1)
     effect = KaleidoscopeCube(
         kaleidoscope_params={'n_slices': 12},
-        cube_params={'speed': 90, 'direction': 'horizontal'}
+        cube_params={'speed_x': 90, 'speed_y': 30}
     )
     
     # The `apply` method in the effect returns a transformed clip.

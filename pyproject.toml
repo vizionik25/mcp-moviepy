@@ -7,6 +7,7 @@ license = { text = "MIT" }
 requires-python = ">=3.12"
 dependencies = [
     "fastmcp>=2.14.5",
+    "mcp-ui-server>=1.0.0",
     "moviepy[all]>=2.2.1",
     "numexpr>=2.14.1",
     "opencv-contrib-python>=4.13.0.90",

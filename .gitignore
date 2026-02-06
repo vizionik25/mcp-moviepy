@@ -5,6 +5,7 @@ build/
 dist/
 wheels/
 *.egg-info
+.pytest_cache/
 
 # Virtual environments
 .venv
@@ -13,9 +14,8 @@ wheels/
 conductor/
 
 # Misc
-moviepy-effects.skill
-GEMINI.md
 moviepy-reference/
 .gemini/
 *.mp4
 *.mp3
+.genkit/

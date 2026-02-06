@@ -6,8 +6,12 @@
   "mcpServers": [
     {
       "id": "mcp-moviepy",
-      "url": "http://localhost:8080/mcp",
-      "transport": "http"
+      "command": "uv",
+      "args": [
+        "run",
+        "${extensionPath}/main.py"
+      ],
+      "transport": "stdio"
     }
   ],
   "skills": [

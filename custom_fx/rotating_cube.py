@@ -5,110 +5,121 @@ import cv2
 class RotatingCube(Effect):
     """
     Simulates a 3D rotating cube effect where the video is mapped to the faces.
-    Can rotate horizontally or vertically at a specified speed.
+    Enhanced version with multi-axis rotation, optional quad mirroring, 
+    and circular/elliptical motion paths.
     """
-    def __init__(self, speed: float = 45, direction: str = "horizontal", zoom: float = 1.0):
+    def __init__(self, 
+                 speed_x: float = 45, 
+                 speed_y: float = 30, 
+                 zoom: float = 1.0, 
+                 mirror: bool = True,
+                 motion_radius: float = 0.1,
+                 motion_speed: float = 20):
         """
         Args:
-            speed (float): Rotation speed in degrees per second.
-            direction (str): 'horizontal' (around Y axis) or 'vertical' (around X axis).
+            speed_x (float): Rotation speed around X axis (degrees/sec).
+            speed_y (float): Rotation speed around Y axis (degrees/sec).
             zoom (float): Zoom factor. Higher values make the cube appear closer.
+            mirror (bool): If True, applies a quad-mirror effect to the video before mapping.
+            motion_radius (float): Radius of the circular motion path (fraction of screen size).
+            motion_speed (float): Speed of the circular motion (degrees/sec).
         """
-        self.speed = speed
-        self.direction = direction.lower()
+        self.speed_x = speed_x
+        self.speed_y = speed_y
         self.zoom = zoom
+        self.mirror = mirror
+        self.motion_radius = motion_radius
+        self.motion_speed = motion_speed
+
+    def _apply_quad_mirror(self, frame):
+        h, w = frame.shape[:2]
+        xc, yc = w // 2, h // 2
+        idx_x = np.arange(w)
+        idx_x = np.where(idx_x <= xc, idx_x, 2 * xc - idx_x)
+        idx_x = np.clip(idx_x, 0, xc)
+        idx_y = np.arange(h)
+        idx_y = np.where(idx_y <= yc, idx_y, 2 * yc - idx_y)
+        idx_y = np.clip(idx_y, 0, yc)
+        return frame[idx_y][:, idx_x]
 
     def apply(self, clip):
         def filter(get_frame, t):
-            frame = get_frame(t)
+            raw_frame = get_frame(t)
+            frame = self._apply_quad_mirror(raw_frame) if self.mirror else raw_frame
             h, w = frame.shape[:2]
             
-            # Current rotation angle
-            angle = (self.speed * t) % 360
+            # Rotation angles
+            ax = np.deg2rad((self.speed_x * t) % 360)
+            ay = np.deg2rad((self.speed_y * t) % 360)
+            
+            # Motion path offset
+            m_rad = np.deg2rad((self.motion_speed * t) % 360)
+            off_x = w * self.motion_radius * np.cos(m_rad)
+            off_y = h * self.motion_radius * np.sin(m_rad)
             
             # Perspective parameters
             focal_length = max(w, h) * self.zoom
-            dist = max(w, h) / 2 # Distance from center to faces
+            dist = max(w, h) / 2
             
-            # Canvas to draw faces
-            canvas = np.zeros_like(frame)
+            # Define 6 faces (Front, Back, Top, Bottom, Right, Left)
+            cube_faces = [
+                np.array([[-w/2, -h/2,  dist], [ w/2, -h/2,  dist], [ w/2,  h/2,  dist], [-w/2,  h/2,  dist]]), # Front
+                np.array([[ w/2, -h/2, -dist], [-w/2, -h/2, -dist], [-w/2,  h/2, -dist], [ w/2,  h/2, -dist]]), # Back
+                np.array([[-w/2, -dist, -h/2], [ w/2, -dist, -h/2], [ w/2, -dist,  h/2], [-w/2, -dist,  h/2]]), # Top
+                np.array([[-w/2,  dist,  h/2], [ w/2,  dist,  h/2], [ w/2,  dist, -h/2], [-w/2,  dist, -h/2]]), # Bottom
+                np.array([[ dist, -h/2,  w/2], [ dist, -h/2, -w/2], [ dist,  h/2, -w/2], [ dist,  h/2,  w/2]]), # Right
+                np.array([[-dist, -h/2, -w/2], [-dist, -h/2,  w/2], [-dist,  h/2,  w/2], [-dist,  h/2, -w/2]]), # Left
+            ]
+
+            # Rotation Matrices
+            cx, sx = np.cos(ax), np.sin(ax)
+            Rx = np.array([[1, 0, 0], [0, cx, -sx], [0, sx, cx]])
+            cy, sy = np.cos(ay), np.sin(ay)
+            Ry = np.array([[cy, 0, sy], [0, 1, 0], [-sy, 0, cy]])
             
-            # We'll render 4 faces of the cube in the rotation plane
-            face_angles = [0, 90, 180, 270]
-            
-            # Sort faces by distance (depth) to the viewer if needed, 
-            # but for 90-deg faces, simple maximum/masking works.
-            # We only render faces that are in front of the camera (abs < 90)
-            
-            for face_angle in face_angles:
-                # Relative angle of the face to the camera
-                # Camera is at 'angle', face is at 'face_angle'
-                rel_angle = (face_angle - angle + 180) % 360 - 180
+            R = Ry @ Rx # Combined rotation
+
+            # Project and sort faces by depth
+            rendered_faces = []
+            for face_pts in cube_faces:
+                # Rotate
+                rot_pts = face_pts @ R.T
                 
-                # Only faces within the forward 180 degrees are potentially visible
-                if abs(rel_angle) > 90:
+                # Check visibility (backface culling)
+                v1 = rot_pts[1] - rot_pts[0]
+                v2 = rot_pts[3] - rot_pts[0]
+                normal = np.cross(v1, v2)
+                if normal[2] <= 0: # Facing away
                     continue
                 
-                rad = np.deg2rad(rel_angle)
-                
-                # Define corners of the face at (0, 0, dist)
-                # Face size matches original clip size
-                c3d = np.array([
-                    [-w/2, -h/2, dist],
-                    [w/2, -h/2, dist],
-                    [w/2, h/2, dist],
-                    [-w/2, h/2, dist]
-                ])
-                
-                # Rotation Matrix
-                if self.direction == "horizontal":
-                    # Pan around Y axis
-                    cos_a, sin_a = np.cos(rad), np.sin(rad)
-                    rot_m = np.array([
-                        [cos_a, 0, sin_a],
-                        [0, 1, 0],
-                        [-sin_a, 0, cos_a]
-                    ])
-                else:
-                    # Tilt around X axis
-                    cos_a, sin_a = np.cos(rad), np.sin(rad)
-                    rot_m = np.array([
-                        [1, 0, 0],
-                        [0, cos_a, -sin_a],
-                        [0, sin_a, cos_a]
-                    ])
-                
-                # Apply rotation to corners
-                rotated_c3d = c3d @ rot_m.T
-                
-                # Project 3D points to 2D
+                # Project
                 points_2d = []
                 visible = True
-                for x, y, z in rotated_c3d:
-                    # Perspective projection: x' = (x * f) / z
-                    # Offset by w/2, h/2 to center on screen
-                    if z <= 0.1: # Point is behind or too close to camera
+                avg_z = np.mean(rot_pts[:, 2])
+                
+                for x, y, z in rot_pts:
+                    if z <= 0.1:
                         visible = False
                         break
-                    px = (x * focal_length / z) + w/2
-                    py = (y * focal_length / z) + h/2
+                    px = (x * focal_length / z) + w/2 + off_x
+                    py = (y * focal_length / z) + h/2 + off_y
                     points_2d.append([px, py])
                 
-                if not visible:
-                    continue
-                
-                # Perform perspective warp
-                src_pts = np.array([[0,0], [w,0], [w,h], [0,h]], dtype=np.float32)
-                dst_pts = np.array(points_2d, dtype=np.float32)
-                
+                if visible:
+                    rendered_faces.append((avg_z, np.array(points_2d, dtype=np.float32)))
+
+            # Sort by depth (farthest first)
+            rendered_faces.sort(key=lambda x: x[0], reverse=True)
+
+            # Draw
+            canvas = np.zeros_like(frame)
+            src_pts = np.array([[0,0], [w,0], [w,h], [0,h]], dtype=np.float32)
+            
+            for _, dst_pts in rendered_faces:
                 M = cv2.getPerspectiveTransform(src_pts, dst_pts)
                 face_img = cv2.warpPerspective(frame, M, (w, h))
-                
-                # Merge face into canvas
-                # We use bitwise_or or maximum for simple compositing
-                # A proper depth buffer would be better for complex 3D, 
-                # but for a cube this works well.
-                canvas = np.maximum(canvas, face_img)
+                mask = np.any(face_img > 0, axis=-1)
+                canvas[mask] = face_img[mask]
             
             return canvas
 

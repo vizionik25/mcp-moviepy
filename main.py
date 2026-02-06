@@ -601,10 +601,25 @@ def vfx_clone_grid(clip_id: str, n_clones: int = 4) -> str:
     return register_clip(clip.with_effects([CloneGrid(n_clones)]))
 
 @mcp.tool
-def vfx_rotating_cube(clip_id: str, speed: float = 45, direction: str = "horizontal", zoom: float = 1.0) -> str:
+def vfx_rotating_cube(
+    clip_id: str, 
+    speed_x: float = 45, 
+    speed_y: float = 30, 
+    zoom: float = 1.0, 
+    mirror: bool = True,
+    motion_radius: float = 0.1,
+    motion_speed: float = 20
+) -> str:
     """Simulates a 3D rotating cube effect with the video mapped to its faces."""
     clip = get_clip(clip_id)
-    return register_clip(clip.with_effects([RotatingCube(speed, direction, zoom)]))
+    return register_clip(clip.with_effects([RotatingCube(
+        speed_x=speed_x, 
+        speed_y=speed_y, 
+        zoom=zoom, 
+        mirror=mirror,
+        motion_radius=motion_radius,
+        motion_speed=motion_speed
+    )]))
 
 @mcp.tool
 def vfx_kaleidoscope_cube(clip_id: str, kaleidoscope_params: dict = None, cube_params: dict = None) -> str:
@@ -850,12 +865,12 @@ def auto_framing_for_tiktok(clip_id: str) -> str:
 
 @mcp.prompt
 def rotating_cube_transition(clip_id: str) -> str:
-    """Wraps the video onto a rotating 3D cube.
-    A dynamic way to present content or transition between scenes."""
+    """Wraps the video onto a rotating 3D cube with circular motion.
+    A dynamic way to present content with high-end visualizer vibes."""
     return (
-        f"Apply the rotating cube effect to clip {clip_id} with a speed of 60 degrees per second "
-        "in a horizontal direction. This will make your video appear as if it's painted "
-        "on the sides of a spinning 3D cube."
+        f"Apply the rotating cube effect to clip {clip_id} with speed_x=45, speed_y=30, "
+        "and mirror=True. The cube will tumble through 3D space with quad-mirror "
+        "symmetry on its faces, following a graceful circular motion path."
     )
 
 from pydantic import Field
@@ -910,14 +925,16 @@ def title_card_generator(
 def demonstrate_kaleidoscope_cube(
     clip_id: str,
     kaleidoscope_slices: int = Field(default=12, description="Number of kaleidoscope slices"),
-    cube_speed: float = Field(default=90, description="Cube rotation speed in degrees per second"),
-    cube_direction: str = Field(default="horizontal", description="Cube rotation direction ('horizontal' or 'vertical')")
+    speed_x: float = Field(default=45, description="Cube rotation speed around X-axis (deg/s)"),
+    speed_y: float = Field(default=30, description="Cube rotation speed around Y-axis (deg/s)"),
+    mirror: bool = Field(default=True, description="Apply quad-mirror symmetry")
 ) -> str:
     """Demonstrates the KaleidoscopeCube effect by applying it to a clip."""
     return (
         f"Apply the KaleidoscopeCube effect to clip {clip_id} with "
-        f"{kaleidoscope_slices} kaleidoscope slices, a cube rotation speed of {cube_speed} deg/s "
-        f"in the {cube_direction} direction. Then, save the resulting video as 'kaleidoscope_cube_demo.mp4'."
+        f"{kaleidoscope_slices} kaleidoscope slices, using cube parameters "
+        f"speed_x={speed_x}, speed_y={speed_y}, and mirror={mirror}. "
+        f"Then, save the resulting video as 'kaleidoscope_cube_demo.mp4'."
     )
 
 if __name__ == "__main__":

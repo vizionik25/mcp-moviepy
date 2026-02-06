@@ -95,12 +95,15 @@ Creates a grid of clones of the original clip. The effect automatically determin
 **File:** `custom_fx/rotating_cube.py`  
 **Class:** `RotatingCube`
 
-Simulates a 3D rotating cube (or "cube inside") effect where the video is mapped to the faces of a virtual cube. The viewer perceives the rotation from a fixed perspective, seeing faces move in and out of view.
+Simulates a 3D rotating cube effect with the video mapped to all six faces. This enhanced version supports simultaneous multi-axis rotation, optional quad-mirroring, and dynamic motion paths.
 
 ### Parameters
-- `speed` (float, default: `45`): Rotation speed in degrees per second.
-- `direction` (str, default: `"horizontal"`): The axis of rotation. Options: `"horizontal"` (rotates around the vertical Y-axis) or `"vertical"` (rotates around the horizontal X-axis).
-- `zoom` (float, default: `1.0`): Perspective zoom factor. Adjusts the field of view and perceived distance to the cube.
+- `speed_x` (float, default: `45`): Rotation speed around the horizontal X-axis in degrees per second.
+- `speed_y` (float, default: `30`): Rotation speed around the vertical Y-axis in degrees per second.
+- `zoom` (float, default: `1.0`): Perspective zoom factor.
+- `mirror` (bool, default: `True`): Whether to apply a quad-mirror symmetry effect to the video before mapping it to the cube faces.
+- `motion_radius` (float, default: `0.1`): Radius of the circular/elliptical motion path (as a fraction of screen size).
+- `motion_speed` (float, default: `20`): Speed of the cube's motion along the path in degrees per second.
 
 ---
 

@@ -25,6 +25,7 @@ Overlays a "Matrix" style digital rain animation on the clip. The rain features 
 - `chars` (str, default: `"0123456789ABCDEF"`): The character set used for the digital rain.
 - `color` (str, default: `"green"`): Color of the rain. Supported options: `red`, `green`, `blue`, `white`.
 - `font_size` (int, default: `16`): Size of the characters.
+- `seed` (int, default: `42`): The seed for the random number generator.
 
 ---
 

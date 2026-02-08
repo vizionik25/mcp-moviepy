@@ -86,7 +86,56 @@ np = sys.modules["numpy"]
 Image = sys.modules["PIL"].Image
 
 import main
-from main import *
+from main import (
+    validate_path,
+    get_clip,
+    delete_clip,
+    list_clips,
+    video_file_clip,
+    image_clip,
+    image_sequence_clip,
+    text_clip,
+    color_clip,
+    credits_clip,
+    subtitles_clip,
+    write_videofile,
+    tools_ffmpeg_extract_subclip,
+    write_gif,
+    audio_file_clip,
+    write_audiofile,
+    set_position,
+    set_audio,
+    set_mask,
+    set_start,
+    set_end,
+    set_duration,
+    subclip,
+    composite_video_clips,
+    tools_clips_array,
+    concatenate_video_clips,
+    vfx_accel_decel,
+    vfx_black_white,
+    vfx_blink,
+    vfx_crop,
+    vfx_cross_fade_in,
+    vfx_cross_fade_out,
+    vfx_fade_in,
+    vfx_fade_out,
+    vfx_gamma_correction,
+    vfx_head_blur,
+    vfx_invert_colors,
+    vfx_multiply_color,
+    vfx_resize,
+    vfx_rotate,
+    vfx_rgb_sync,
+    tools_detect_scenes,
+    tools_find_video_period,
+    tools_drawing_color_gradient,
+    tools_drawing_color_split,
+    tools_file_to_subtitles,
+    tools_find_audio_period,
+    CLIPS
+)
 
 @pytest.fixture(autouse=True)
 def cleanup():
@@ -235,13 +284,10 @@ def test_tools_hit():
     tools_detect_scenes.fn(vid)
     tools_find_video_period.fn(vid)
 
-    # find_audio_period is imported INSIDE the function tools_find_audio_period
-    # from moviepy.audio.tools.cuts import find_audio_period
-    # So it accesses sys.modules["moviepy.audio.tools.cuts"] at runtime.
-    sys.modules["moviepy.audio.tools.cuts"] = MagicMock()
-    sys.modules["moviepy.audio.tools.cuts"].find_audio_period.return_value = 1.0
-
-    tools_find_audio_period.fn(vid)
+    # find_audio_period is imported at top level
+    with patch('main.find_audio_period') as mock_find:
+        mock_find.return_value = 1.0
+        tools_find_audio_period.fn(vid)
 
     tools_drawing_color_gradient.fn([10,10], [0,0], [10,10], [0,0,0], [255,255,255])
     tools_drawing_color_split.fn([10,10], 5, 5, [0,0], [10,10], [0,0,0], [255,255,255])

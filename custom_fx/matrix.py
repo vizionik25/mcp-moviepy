@@ -90,6 +90,8 @@ class Matrix(Effect):
             trail_len = h // 2
             # Use integer arithmetic for lead_y
             lead_y_int = ((col_speeds * t + col_offsets) % (h + trail_len)).astype(np.int32)
+            trail_len = max(1, h // 2)
+            lead_y = (col_speeds * t + col_offsets) % (h + trail_len)
             
             # Create a Y-coordinate grid for the rows
             row_y = (np.arange(rows) * self.char_h).astype(np.int32)
@@ -119,6 +121,24 @@ class Matrix(Effect):
             # col_active is float 0.0 or 1.0. Convert to bool/int mask.
             col_mask = (col_active > 0.5)
             brightness_int *= col_mask[None, :].astype(np.uint16)
+            # Use integer arithmetic for distance
+            lead_y_int = lead_y.astype(np.int32)
+            dist = lead_y_int[None, :] - row_y[:, None]
+            
+            # Brightness decreases as we move away from the lead (upward)
+            # brightness_val = 256 - (dist * 256) // trail_len
+            brightness_val = 256 - ((dist << 8) // trail_len)
+
+            # Apply bounds (0 to trail_len)
+            mask_body = (dist >= 0) & (dist < trail_len)
+            brightness_int = np.where(mask_body, brightness_val, 0)
+            
+            # Highlight the head of the drop (brightness 1.4 -> 358)
+            mask_head = (dist >= 0) & (dist < self.char_h)
+            brightness_int = np.where(mask_head, 358, brightness_int)
+            
+            # Apply column activity mask
+            brightness_int = (brightness_int * col_active.astype(np.int32)[None, :]).astype(np.uint16)
             
             # 2. Randomize characters periodically
             # Characters change slightly over time to simulate shifting data
@@ -142,7 +162,8 @@ class Matrix(Effect):
             
             # 4. Coloring and Compositing
             # Convert to RGB and apply color
-            rain_rgb = (rain_layer[:, :, None].astype(np.uint32) * self.rgb).astype(np.uint8)
+            product = rain_layer[:, :, None].astype(np.uint32) * self.rgb
+            rain_rgb = np.minimum(product >> 8, 255).astype(np.uint8)
             
             # Composite with original frame
             # We use an additive blend but slightly dim the background for visibility

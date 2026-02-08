@@ -65,7 +65,7 @@ class RGBSync(Effect):
                 
                 channels.append(channel_data)
             
-            return np.stack(channels, axis=-1)
+            return np.dstack(channels)
 
         return clip.transform(filter)
 

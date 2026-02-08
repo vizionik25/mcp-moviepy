@@ -73,6 +73,16 @@ def test_validate_path_traversal_in_tmp():
     with pytest.raises(ValueError, match="Access denied to path"):
         validate_path(filename)
 
+def test_validate_path_sibling_directory():
+    """Test that a path in a sibling directory with a common prefix is invalid."""
+    cwd = os.getcwd()
+    # Construct a path that starts with CWD but is a sibling directory
+    # e.g. /app -> /app_suffix
+    sibling_dir = cwd + "_suffix"
+    filename = os.path.join(sibling_dir, "secret.txt")
+    with pytest.raises(ValueError, match="Access denied to path"):
+        validate_path(filename)
+
 def test_validate_path_symlink_traversal():
     """Test that a symlink pointing outside allowed dirs is detected."""
     # Create a symlink in CWD that points to /etc/passwd

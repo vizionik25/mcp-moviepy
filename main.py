@@ -607,11 +607,12 @@ def vfx_matrix(
     density: float = 0.2,
     chars: str = "0123456789ABCDEF",
     color: str = "green",
-    font_size: int = 16
+    font_size: int = 16,
+    seed: int = 42
 ) -> str:
     """Apply a Matrix-style digital rain effect with scrolling characters."""
     clip = get_clip(clip_id)
-    return register_clip(clip.with_effects([Matrix(speed, density, chars, color, font_size)]))
+    return register_clip(clip.with_effects([Matrix(speed, density, chars, color, font_size, seed)]))
 
 @mcp.tool
 def vfx_auto_framing(clip_id: str, target_aspect_ratio: float = 9/16, smoothing: float = 0.9) -> str:

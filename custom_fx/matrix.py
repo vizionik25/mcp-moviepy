@@ -1,5 +1,6 @@
 from moviepy import Effect
 import numpy as np
+import cv2
 from PIL import Image, ImageDraw, ImageFont
 
 class Matrix(Effect):
@@ -39,6 +40,14 @@ class Matrix(Effect):
         }
         self.rgb = np.array(colors.get(self.color_name, (0, 255, 0)), dtype=np.uint8)
         
+        # Precompute Color Look-Up Table (LUT) for fast mapping of intensity to RGB
+        # Input: uint16 intensity (scaled by 256) -> Output: uint8 RGB
+        # We pre-calculate (intensity * color) >> 8 for all possible uint16 values
+        lut_indices = np.arange(65536, dtype=np.uint32)
+        # Use fixed-point math: (intensity * color) >> 8
+        lut_vals = (lut_indices[:, None] * self.rgb) >> 8
+        self.color_lut = np.clip(lut_vals, 0, 255).astype(np.uint8)
+
         # Internal state
         self._atlas = None
         self.char_w = 0
@@ -87,12 +96,16 @@ class Matrix(Effect):
             
             # 1. Calculate the Brightness Grid (Vectorized)
             # Time-based position of the 'lead' for each column
+            trail_len = h // 2
+            # Use integer arithmetic for lead_y
+            lead_y_int = ((col_speeds * t + col_offsets) % (h + trail_len)).astype(np.int32)
             trail_len = max(1, h // 2)
             lead_y = (col_speeds * t + col_offsets) % (h + trail_len)
             lead_y_int = lead_y.astype(np.int32)
             
             # Create a Y-coordinate grid for the rows
             row_y = np.arange(rows, dtype=np.int32) * self.char_h
+            row_y = (np.arange(rows) * self.char_h).astype(np.int32)
             
             # Calculate distance from each cell to its column's lead position
             # Shape: (rows, cols)
@@ -123,6 +136,46 @@ class Matrix(Effect):
             
             # Apply column activity mask
             brightness_int *= col_active_int[None, :]
+
+            # Calculate brightness map using integer arithmetic (0-256 scale)
+            # Initialize with 0
+            brightness_int = np.zeros((rows, cols), dtype=np.uint16)
+            
+            if trail_len > 0:
+                # Body: brightness decreases linearly from head
+                body_mask = (dist >= 0) & (dist < trail_len)
+                # Formula: 256 * (trail_len - dist) / trail_len
+                # We use integer division.
+                # Note: trail_len - dist is positive in this range.
+                brightness_int[body_mask] = ((trail_len - dist[body_mask]) * 256) // trail_len
+            
+            # Highlight the head of the drop (override body)
+            # 1.4 * 256 = 358.4 -> 358
+            head_mask = (dist >= 0) & (dist < self.char_h)
+            brightness_int[head_mask] = 358
+            
+            # Apply column activity mask
+            # col_active is float 0.0 or 1.0. Convert to bool/int mask.
+            col_mask = (col_active > 0.5)
+            brightness_int *= col_mask[None, :].astype(np.uint16)
+            # Use integer arithmetic for distance
+            lead_y_int = lead_y.astype(np.int32)
+            dist = lead_y_int[None, :] - row_y[:, None]
+            
+            # Brightness decreases as we move away from the lead (upward)
+            # brightness_val = 256 - (dist * 256) // trail_len
+            brightness_val = 256 - ((dist << 8) // trail_len)
+
+            # Apply bounds (0 to trail_len)
+            mask_body = (dist >= 0) & (dist < trail_len)
+            brightness_int = np.where(mask_body, brightness_val, 0)
+            
+            # Highlight the head of the drop (brightness 1.4 -> 358)
+            mask_head = (dist >= 0) & (dist < self.char_h)
+            brightness_int = np.where(mask_head, 358, brightness_int)
+            
+            # Apply column activity mask
+            brightness_int = (brightness_int * col_active.astype(np.int32)[None, :]).astype(np.uint16)
             
             # 2. Randomize characters periodically
             # Characters change slightly over time to simulate shifting data
@@ -145,17 +198,21 @@ class Matrix(Effect):
             rain_layer = rain_layer[:h, :w]
             
             # 4. Coloring and Compositing
+            # Convert to RGB and apply color using precomputed LUT (fast)
+            rain_rgb = self.color_lut[rain_layer]
             # Convert to RGB and apply color
             # Use uint8 multiplication (modulo 256) to avoid uint32 overhead
             rain_rgb = (rain_layer.astype(np.uint8)[:, :, None] * self.rgb).astype(np.uint8)
+            product = rain_layer[:, :, None].astype(np.uint32) * self.rgb
+            rain_rgb = np.minimum(product >> 8, 255).astype(np.uint8)
             
             # Composite with original frame
             # We use an additive blend but slightly dim the background for visibility
-            dimmed_bg = (frame.astype(np.uint16) * 205) >> 8
-            dimmed_bg = dimmed_bg.astype(np.uint8)
+            # Use cv2 for optimized processing
+            dimmed_bg = cv2.convertScaleAbs(frame, alpha=0.8)
             
-            # Additive blend
-            out = np.clip(dimmed_bg.astype(np.int16) + rain_rgb.astype(np.int16), 0, 255).astype(np.uint8)
+            # Additive blend with saturation
+            out = cv2.add(dimmed_bg, rain_rgb)
             
             return out
 

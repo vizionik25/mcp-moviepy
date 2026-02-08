@@ -22,9 +22,6 @@ class Matrix(Effect):
         Seed for the random number generator.
     """
     def __init__(self, speed=150, density=0.2, chars="0123456789ABCDEF", color="green", font_size=16, seed=42):
-        The seed for the random number generator. Default is 42.
-    """
-    def __init__(self, speed=150, density=0.2, chars="0123456789ABCDEF", color="green", font_size=16, seed=42):
         self.seed = seed
         self.speed = speed
         self.density = density
@@ -80,7 +77,7 @@ class Matrix(Effect):
         rng = np.random.default_rng(self.seed)
         col_offsets = rng.random(cols) * h * 2
         col_speeds = self.speed * (0.8 + 0.4 * rng.random(cols))
-        col_active = (rng.random(cols) < self.density).astype(np.float32)
+        col_active_int = (rng.random(cols) < self.density).astype(np.int16)
         
         # Static grid for character randomization
         base_char_grid = rng.integers(0, len(self.chars), size=(rows, cols))
@@ -90,26 +87,42 @@ class Matrix(Effect):
             
             # 1. Calculate the Brightness Grid (Vectorized)
             # Time-based position of the 'lead' for each column
-            trail_len = h // 2
+            trail_len = max(1, h // 2)
             lead_y = (col_speeds * t + col_offsets) % (h + trail_len)
+            lead_y_int = lead_y.astype(np.int32)
             
             # Create a Y-coordinate grid for the rows
-            row_y = np.arange(rows) * self.char_h
+            row_y = np.arange(rows, dtype=np.int32) * self.char_h
             
             # Calculate distance from each cell to its column's lead position
             # Shape: (rows, cols)
-            dist = lead_y[None, :] - row_y[:, None]
+            dist = lead_y_int[None, :] - row_y[:, None]
             
             # Brightness decreases as we move away from the lead (upward)
-            brightness = np.where((dist >= 0) & (dist < trail_len), 
-                                  1.0 - (dist / trail_len), 0.0)
+            # Fixed-point arithmetic (x256)
+            SCALE = 256
+
+            # Initialize brightness mask with 0
+            brightness_int = np.zeros((rows, cols), dtype=np.int16)
+
+            # Trail mask: 0 <= dist < trail_len
+            mask_trail = (dist >= 0) & (dist < trail_len)
+
+            # Calculate brightness for trail
+            if np.any(mask_trail):
+                # brightness = 1.0 - (dist / trail_len)
+                # brightness * SCALE = SCALE - (dist * SCALE // trail_len)
+                val = SCALE - (dist[mask_trail] * SCALE // trail_len)
+                brightness_int[mask_trail] = val.astype(np.int16)
             
-            # Highlight the head of the drop
-            brightness = np.where((dist >= 0) & (dist < self.char_h), 
-                                  1.4, brightness)
+            # Head highlight: 0 <= dist < char_h
+            # Equivalent to 1.4 * SCALE = 358
+            mask_head = (dist >= 0) & (dist < self.char_h)
+            if np.any(mask_head):
+                brightness_int[mask_head] = 358
             
             # Apply column activity mask
-            brightness *= col_active[None, :]
+            brightness_int *= col_active_int[None, :]
             
             # 2. Randomize characters periodically
             # Characters change slightly over time to simulate shifting data
@@ -122,7 +135,6 @@ class Matrix(Effect):
             
             # Apply brightness: (rows, cols, char_h, char_w)
             # Use fixed-point arithmetic (x256) for brightness application
-            brightness_int = (brightness * 256).astype(np.uint16)
             rain_mask = (char_slices.astype(np.uint16) * brightness_int[:, :, None, None]) >> 8
             
             # Reshape/Transpose to form the full rain image
@@ -134,7 +146,8 @@ class Matrix(Effect):
             
             # 4. Coloring and Compositing
             # Convert to RGB and apply color
-            rain_rgb = (rain_layer[:, :, None].astype(np.uint32) * self.rgb).astype(np.uint8)
+            # Use uint8 multiplication (modulo 256) to avoid uint32 overhead
+            rain_rgb = (rain_layer.astype(np.uint8)[:, :, None] * self.rgb).astype(np.uint8)
             
             # Composite with original frame
             # We use an additive blend but slightly dim the background for visibility

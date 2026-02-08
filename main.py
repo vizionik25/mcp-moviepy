@@ -23,10 +23,10 @@ MAX_CLIPS = 100
 
 def validate_path(filename: str):
     """Basic path validation to prevent traversal outside the project directory or temp."""
-    abs_path = os.path.abspath(filename)
+    real_path = os.path.realpath(filename)
     cwd = os.getcwd()
     tmp = "/tmp" # Generic tmp for linux
-    if not (abs_path.startswith(cwd) or abs_path.startswith(tmp)):
+    if not (real_path.startswith(cwd) or real_path.startswith(tmp)):
          raise ValueError(f"Access denied to path: {filename}. Only paths within the project directory or /tmp are allowed.")
     return filename
 

@@ -87,6 +87,9 @@ class Matrix(Effect):
             
             # 1. Calculate the Brightness Grid (Vectorized)
             # Time-based position of the 'lead' for each column
+            trail_len = h // 2
+            # Use integer arithmetic for lead_y
+            lead_y_int = ((col_speeds * t + col_offsets) % (h + trail_len)).astype(np.int32)
             trail_len = max(1, h // 2)
             lead_y = (col_speeds * t + col_offsets) % (h + trail_len)
             
@@ -95,6 +98,29 @@ class Matrix(Effect):
             
             # Calculate distance from each cell to its column's lead position
             # Shape: (rows, cols)
+            dist = lead_y_int[None, :] - row_y[:, None]
+
+            # Calculate brightness map using integer arithmetic (0-256 scale)
+            # Initialize with 0
+            brightness_int = np.zeros((rows, cols), dtype=np.uint16)
+            
+            if trail_len > 0:
+                # Body: brightness decreases linearly from head
+                body_mask = (dist >= 0) & (dist < trail_len)
+                # Formula: 256 * (trail_len - dist) / trail_len
+                # We use integer division.
+                # Note: trail_len - dist is positive in this range.
+                brightness_int[body_mask] = ((trail_len - dist[body_mask]) * 256) // trail_len
+            
+            # Highlight the head of the drop (override body)
+            # 1.4 * 256 = 358.4 -> 358
+            head_mask = (dist >= 0) & (dist < self.char_h)
+            brightness_int[head_mask] = 358
+            
+            # Apply column activity mask
+            # col_active is float 0.0 or 1.0. Convert to bool/int mask.
+            col_mask = (col_active > 0.5)
+            brightness_int *= col_mask[None, :].astype(np.uint16)
             # Use integer arithmetic for distance
             lead_y_int = lead_y.astype(np.int32)
             dist = lead_y_int[None, :] - row_y[:, None]

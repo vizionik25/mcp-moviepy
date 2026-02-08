@@ -86,7 +86,7 @@ class Matrix(Effect):
         rng = np.random.default_rng(self.seed)
         col_offsets = rng.random(cols) * h * 2
         col_speeds = self.speed * (0.8 + 0.4 * rng.random(cols))
-        col_active = (rng.random(cols) < self.density).astype(np.float32)
+        col_active_int = (rng.random(cols) < self.density).astype(np.int16)
         
         # Static grid for character randomization
         base_char_grid = rng.integers(0, len(self.chars), size=(rows, cols))
@@ -101,13 +101,41 @@ class Matrix(Effect):
             lead_y_int = ((col_speeds * t + col_offsets) % (h + trail_len)).astype(np.int32)
             trail_len = max(1, h // 2)
             lead_y = (col_speeds * t + col_offsets) % (h + trail_len)
+            lead_y_int = lead_y.astype(np.int32)
             
             # Create a Y-coordinate grid for the rows
+            row_y = np.arange(rows, dtype=np.int32) * self.char_h
             row_y = (np.arange(rows) * self.char_h).astype(np.int32)
             
             # Calculate distance from each cell to its column's lead position
             # Shape: (rows, cols)
             dist = lead_y_int[None, :] - row_y[:, None]
+            
+            # Brightness decreases as we move away from the lead (upward)
+            # Fixed-point arithmetic (x256)
+            SCALE = 256
+
+            # Initialize brightness mask with 0
+            brightness_int = np.zeros((rows, cols), dtype=np.int16)
+
+            # Trail mask: 0 <= dist < trail_len
+            mask_trail = (dist >= 0) & (dist < trail_len)
+
+            # Calculate brightness for trail
+            if np.any(mask_trail):
+                # brightness = 1.0 - (dist / trail_len)
+                # brightness * SCALE = SCALE - (dist * SCALE // trail_len)
+                val = SCALE - (dist[mask_trail] * SCALE // trail_len)
+                brightness_int[mask_trail] = val.astype(np.int16)
+            
+            # Head highlight: 0 <= dist < char_h
+            # Equivalent to 1.4 * SCALE = 358
+            mask_head = (dist >= 0) & (dist < self.char_h)
+            if np.any(mask_head):
+                brightness_int[mask_head] = 358
+            
+            # Apply column activity mask
+            brightness_int *= col_active_int[None, :]
 
             # Calculate brightness map using integer arithmetic (0-256 scale)
             # Initialize with 0
@@ -173,6 +201,8 @@ class Matrix(Effect):
             # Convert to RGB and apply color using precomputed LUT (fast)
             rain_rgb = self.color_lut[rain_layer]
             # Convert to RGB and apply color
+            # Use uint8 multiplication (modulo 256) to avoid uint32 overhead
+            rain_rgb = (rain_layer.astype(np.uint8)[:, :, None] * self.rgb).astype(np.uint8)
             product = rain_layer[:, :, None].astype(np.uint32) * self.rgb
             rain_rgb = np.minimum(product >> 8, 255).astype(np.uint8)
             

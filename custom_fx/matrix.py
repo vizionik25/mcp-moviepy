@@ -70,13 +70,13 @@ class Matrix(Effect):
         cols = w // self.char_w + 1
         
         # Pre-generate column offsets and speeds for consistency
-        np.random.seed(42)
-        col_offsets = np.random.rand(cols) * h * 2
-        col_speeds = self.speed * (0.8 + 0.4 * np.random.rand(cols))
-        col_active = (np.random.rand(cols) < self.density).astype(np.float32)
+        rng = np.random.default_rng(42)
+        col_offsets = rng.random(cols) * h * 2
+        col_speeds = self.speed * (0.8 + 0.4 * rng.random(cols))
+        col_active = (rng.random(cols) < self.density).astype(np.float32)
         
         # Static grid for character randomization
-        base_char_grid = np.random.randint(0, len(self.chars), (rows, cols))
+        base_char_grid = rng.integers(0, len(self.chars), size=(rows, cols))
 
         def filter(get_frame, t):
             frame = get_frame(t)

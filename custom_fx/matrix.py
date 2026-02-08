@@ -1,5 +1,6 @@
 from moviepy import Effect
 import numpy as np
+import cv2
 from PIL import Image, ImageDraw, ImageFont
 
 class Matrix(Effect):
@@ -22,9 +23,6 @@ class Matrix(Effect):
         Seed for the random number generator.
     """
     def __init__(self, speed=150, density=0.2, chars="0123456789ABCDEF", color="green", font_size=16, seed=42):
-        The seed for the random number generator. Default is 42.
-    """
-    def __init__(self, speed=150, density=0.2, chars="0123456789ABCDEF", color="green", font_size=16, seed=42):
         self.seed = seed
         self.speed = speed
         self.density = density
@@ -42,6 +40,14 @@ class Matrix(Effect):
         }
         self.rgb = np.array(colors.get(self.color_name, (0, 255, 0)), dtype=np.uint8)
         
+        # Precompute Color Look-Up Table (LUT) for fast mapping of intensity to RGB
+        # Input: uint16 intensity (scaled by 256) -> Output: uint8 RGB
+        # We pre-calculate (intensity * color) >> 8 for all possible uint16 values
+        lut_indices = np.arange(65536, dtype=np.uint32)
+        # Use fixed-point math: (intensity * color) >> 8
+        lut_vals = (lut_indices[:, None] * self.rgb) >> 8
+        self.color_lut = np.clip(lut_vals, 0, 255).astype(np.uint8)
+
         # Internal state
         self._atlas = None
         self.char_w = 0
@@ -133,16 +139,16 @@ class Matrix(Effect):
             rain_layer = rain_layer[:h, :w]
             
             # 4. Coloring and Compositing
-            # Convert to RGB and apply color
-            rain_rgb = (rain_layer[:, :, None].astype(np.uint32) * self.rgb).astype(np.uint8)
+            # Convert to RGB and apply color using precomputed LUT (fast)
+            rain_rgb = self.color_lut[rain_layer]
             
             # Composite with original frame
             # We use an additive blend but slightly dim the background for visibility
-            dimmed_bg = (frame.astype(np.uint16) * 205) >> 8
-            dimmed_bg = dimmed_bg.astype(np.uint8)
+            # Use cv2 for optimized processing
+            dimmed_bg = cv2.convertScaleAbs(frame, alpha=0.8)
             
-            # Additive blend
-            out = np.clip(dimmed_bg.astype(np.int16) + rain_rgb.astype(np.int16), 0, 255).astype(np.uint8)
+            # Additive blend with saturation
+            out = cv2.add(dimmed_bg, rain_rgb)
             
             return out
 

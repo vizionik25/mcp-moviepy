@@ -18,13 +18,16 @@ class Matrix(Effect):
         The color of the rain. Options: 'red', 'green', 'blue', 'white'.
     font_size : int
         Size of the characters.
+    seed : int
+        Seed for the random number generator.
     """
-    def __init__(self, speed=150, density=0.2, chars="0123456789ABCDEF", color="green", font_size=16):
+    def __init__(self, speed=150, density=0.2, chars="0123456789ABCDEF", color="green", font_size=16, seed=42):
         self.speed = speed
         self.density = density
         self.chars = chars
         self.color_name = color.lower()
         self.font_size = font_size
+        self.seed = seed
         
         # Color mapping
         colors = {
@@ -70,7 +73,7 @@ class Matrix(Effect):
         cols = w // self.char_w + 1
         
         # Pre-generate column offsets and speeds for consistency
-        rng = np.random.default_rng(42)
+        rng = np.random.default_rng(self.seed)
         col_offsets = rng.random(cols) * h * 2
         col_speeds = self.speed * (0.8 + 0.4 * rng.random(cols))
         col_active = (rng.random(cols) < self.density).astype(np.float32)

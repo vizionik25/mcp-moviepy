@@ -3,6 +3,7 @@ from pathlib import Path
 from moviepy import *
 from moviepy.video.tools.drawing import color_gradient, color_split
 from moviepy.video.tools.cuts import detect_scenes, find_video_period
+from moviepy.audio.tools.cuts import find_audio_period
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 from moviepy.video.tools.subtitles import file_to_subtitles, SubtitlesClip
 from moviepy.video.tools.credits import CreditsClip
@@ -832,7 +833,6 @@ def write_gif(
 @mcp.tool
 def tools_find_audio_period(clip_id: str) -> float:
     """Find the period of the audio signal."""
-    from moviepy.audio.tools.cuts import find_audio_period
     clip = get_clip(clip_id)
     return float(find_audio_period(clip))
 

@@ -235,13 +235,10 @@ def test_tools_hit():
     tools_detect_scenes.fn(vid)
     tools_find_video_period.fn(vid)
 
-    # find_audio_period is imported INSIDE the function tools_find_audio_period
-    # from moviepy.audio.tools.cuts import find_audio_period
-    # So it accesses sys.modules["moviepy.audio.tools.cuts"] at runtime.
-    sys.modules["moviepy.audio.tools.cuts"] = MagicMock()
-    sys.modules["moviepy.audio.tools.cuts"].find_audio_period.return_value = 1.0
-
-    tools_find_audio_period.fn(vid)
+    # find_audio_period is imported at top level
+    with patch('main.find_audio_period') as mock_find:
+        mock_find.return_value = 1.0
+        tools_find_audio_period.fn(vid)
 
     tools_drawing_color_gradient.fn([10,10], [0,0], [10,10], [0,0,0], [255,255,255])
     tools_drawing_color_split.fn([10,10], 5, 5, [0,0], [10,10], [0,0,0], [255,255,255])

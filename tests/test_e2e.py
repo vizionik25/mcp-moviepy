@@ -4,9 +4,9 @@ import os
 import pytest
 import shutil
 import types
+import importlib
 
-# Create a mock module for moviepy that allows "from moviepy import *"
-mock_moviepy = types.ModuleType("moviepy")
+# Define MockClip (needed by test_max_clips and potentially other tests)
 class MockClip(MagicMock):
     def __init__(self, *args, **kwargs):
         super().__init__()
@@ -23,7 +23,12 @@ class MockClip(MagicMock):
         self.with_effects = MagicMock(return_value=self)
         self.subclipped = MagicMock(return_value=self)
         self.fps = 24
+        self.h = 100
+        self.w = 100
+        self.size = (100, 100)
 
+# Create a mock module for moviepy that allows "from moviepy import *"
+mock_moviepy = types.ModuleType("moviepy")
 mock_moviepy.VideoFileClip = MockClip
 mock_moviepy.ImageClip = MockClip
 mock_moviepy.ImageSequenceClip = MockClip
@@ -37,6 +42,10 @@ mock_moviepy.CompositeAudioClip = MockClip
 mock_moviepy.concatenate_audioclips = MagicMock(return_value=MockClip())
 mock_moviepy.vfx = MagicMock()
 mock_moviepy.afx = MagicMock()
+mock_moviepy.Effect = MagicMock
+
+# Overwrite moviepy
+sys.modules["moviepy"] = mock_moviepy
 
 # Create mock for custom_fx
 mock_custom_fx = types.ModuleType("custom_fx")
@@ -50,12 +59,11 @@ mock_custom_fx.KaleidoscopeCube = MagicMock()
 mock_custom_fx.QuadMirror = MagicMock()
 mock_custom_fx.ChromaKey = MagicMock()
 
-sys.modules["moviepy"] = mock_moviepy
 sys.modules["custom_fx"] = mock_custom_fx
 
-# Setup other modules
+# Mock other modules but NOT numpy etc (use conftest mocks)
 mock_modules = [
-    "fastmcp",
+    # "fastmcp", # Use conftest
     "moviepy.video.tools.drawing",
     "moviepy.video.tools.cuts",
     "moviepy.video.io.ffmpeg_tools",
@@ -64,22 +72,18 @@ mock_modules = [
     "mcp_ui_server",
     "ui",
     # "custom_fx", # Handled above
-    "numpy",
-    "numexpr",
-    "pydantic",
-    "PIL"
+    # "numpy", # Use conftest
+    # "numexpr", # Use conftest
+    # "pydantic", # Use conftest
+    # "PIL" # Use conftest
 ]
 
 for module_name in mock_modules:
     sys.modules[module_name] = MagicMock()
 
-# Setup FastMCP mock to preserve function execution
-def tool_decorator(func):
-    func.fn = func
-    return func
-
-sys.modules["fastmcp"].FastMCP.return_value.tool = tool_decorator
-sys.modules["fastmcp"].FastMCP.return_value.prompt = tool_decorator
+import main
+importlib.reload(main)
+from main import *
 
 # Re-assign mocked modules to local names if used
 np = sys.modules["numpy"]

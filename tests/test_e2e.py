@@ -167,26 +167,16 @@ def test_prompts():
     slideshow_wizard.fn(images=["a.jpg"], duration_per_image=5, transition_duration=1.0, resolution=[1920, 1080], fps=30)
     title_card_generator.fn(text="hi", resolution=[1920, 1080])
     from main import demonstrate_kaleidoscope
-from custom_fx.kaleidoscope_cube import KaleidoscopeCube
+
 
 def test_kaleidoscope_cube():
+    from main import vfx_kaleidoscope_cube
     cid = color_clip.fn([100,100], [255,0,0], duration=1)
-    effect = KaleidoscopeCube(
+    new_cid = vfx_kaleidoscope_cube.fn(
+        cid,
         kaleidoscope_params={'n_slices': 12},
         cube_params={'speed_x': 90, 'speed_y': 30}
     )
-    
-    # The `apply` method in the effect returns a transformed clip.
-    # We need to get the clip ID to write it to a file.
-    # A real test would involve a more robust way to get the new clip ID
-    # but for this e2e test, we will assume the last created clip is the one.
-    
-    # This is a bit of a hack since apply doesn't return the ID.
-    # In a real scenario, the effect would be a tool that registers the new clip.
-    # For now, let's manually apply and register.
-    
-    new_clip = effect.apply(get_clip(cid))
-    new_cid = register_clip(new_clip)
     
     write_videofile.fn(new_cid, "kaleidoscope_cube.mp4", fps=30)
     assert os.path.exists("kaleidoscope_cube.mp4")

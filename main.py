@@ -1,7 +1,9 @@
 from fastmcp import FastMCP
+from pathlib import Path
 from moviepy import *
 from moviepy.video.tools.drawing import color_gradient, color_split
 from moviepy.video.tools.cuts import detect_scenes, find_video_period
+from moviepy.audio.tools.cuts import find_audio_period
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 from moviepy.video.tools.subtitles import file_to_subtitles, SubtitlesClip
 from moviepy.video.tools.credits import CreditsClip
@@ -23,10 +25,10 @@ MAX_CLIPS = 100
 
 def validate_path(filename: str):
     """Basic path validation to prevent traversal outside the project directory or temp."""
-    real_path = os.path.realpath(filename)
-    cwd = os.getcwd()
-    tmp = "/tmp" # Generic tmp for linux
-    if not (real_path.startswith(cwd) or real_path.startswith(tmp)):
+    real_path = Path(filename).resolve()
+    cwd = Path.cwd().resolve()
+    tmp = Path("/tmp").resolve()
+    if not (real_path.is_relative_to(cwd) or real_path.is_relative_to(tmp)):
          raise ValueError(f"Access denied to path: {filename}. Only paths within the project directory or /tmp are allowed.")
     return filename
 
@@ -831,7 +833,6 @@ def write_gif(
 @mcp.tool
 def tools_find_audio_period(clip_id: str) -> float:
     """Find the period of the audio signal."""
-    from moviepy.audio.tools.cuts import find_audio_period
     clip = get_clip(clip_id)
     return float(find_audio_period(clip))
 

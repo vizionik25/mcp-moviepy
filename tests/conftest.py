@@ -14,6 +14,11 @@ if 'numpy' not in sys.modules:
     numpy.uint8 = 'uint8'
     numpy.array = MagicMock(side_effect=lambda x, dtype=None: x)
     numpy.zeros = MagicMock(return_value=MagicMock())
+    # Mock testing module for asserts
+    class FakeTesting:
+        def assert_array_equal(self, *args, **kwargs):
+            pass
+    numpy.testing = FakeTesting()
     sys.modules['numpy'] = numpy
 
 # Mock PIL
@@ -57,6 +62,9 @@ if 'moviepy' not in sys.modules:
     mock_clip_instance.write_gif.side_effect = create_dummy_file
     mock_clip_instance.fps = 24
     mock_clip_instance.duration = 10
+    mock_clip_instance.w = 100
+    mock_clip_instance.h = 100
+    mock_clip_instance.size = (100, 100)
 
     # Fluent interface mocks
     mock_clip_instance.with_position.return_value = mock_clip_instance
@@ -154,6 +162,22 @@ if 'custom_fx' not in sys.modules:
     custom_fx.RotatingCube = MagicMock()
 
     sys.modules['custom_fx'] = custom_fx
+
+    # Mock submodules to allow imports like `from custom_fx.matrix import Matrix`
+    def mock_submodule(name, class_name):
+        m = MagicMock()
+        setattr(m, class_name, getattr(custom_fx, class_name))
+        sys.modules[f'custom_fx.{name}'] = m
+
+    mock_submodule('matrix', 'Matrix')
+    mock_submodule('kaleidoscope', 'Kaleidoscope')
+    mock_submodule('kaleidoscope_cube', 'KaleidoscopeCube')
+    mock_submodule('rgb_sync', 'RGBSync')
+    mock_submodule('quad_mirror', 'QuadMirror')
+    mock_submodule('chroma_key', 'ChromaKey')
+    mock_submodule('auto_framing', 'AutoFraming')
+    mock_submodule('clone_grid', 'CloneGrid')
+    mock_submodule('rotating_cube', 'RotatingCube')
 
     custom_fx.__all__ = [
         'KaleidoscopeCube', 'RGBSync', 'QuadMirror', 'ChromaKey',

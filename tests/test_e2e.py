@@ -166,7 +166,6 @@ def test_prompts():
     from main import slideshow_wizard, title_card_generator
     slideshow_wizard.fn(images=["a.jpg"], duration_per_image=5, transition_duration=1.0, resolution=[1920, 1080], fps=30)
     title_card_generator.fn(text="hi", resolution=[1920, 1080])
-    from main import demonstrate_kaleidoscope
 
 
 def test_kaleidoscope_cube():

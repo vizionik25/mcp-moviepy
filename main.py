@@ -27,10 +27,34 @@ def validate_path(filename: str):
     cwd = os.getcwd()
     tmp = "/tmp" # Generic tmp for linux
     if not (abs_path.startswith(cwd) or abs_path.startswith(tmp)):
-         # In a real production system, this would be stricter.
-         # For this MCP, we'll allow paths within the CWD.
-         pass
+         raise ValueError(f"Access denied to path: {filename}. Only paths within the project directory or /tmp are allowed.")
     return filename
+
+def validate_ffmpeg_params(params: list[str]):
+    """Validates FFmpeg parameters to prevent argument injection."""
+    if not params:
+        return
+
+    # Whitelist of allowed flags. These are commonly used and generally safe.
+    allowed_flags = {
+        "-crf", "-preset", "-tune", "-profile:v", "-profile:a", "-level",
+        "-pix_fmt", "-movflags", "-colorspace", "-color_primaries",
+        "-color_trc", "-color_range", "-metadata", "-sws_flags", "-aspect",
+        "-maxrate", "-minrate", "-bufsize", "-b:v", "-b:a", "-ar", "-ac",
+        "-x264opts", "-x264-params", "-vprofile", "-vlevel", "-threads"
+    }
+
+    for param in params:
+        if param.startswith("-"):
+            # Check if the flag (or its base part) is allowed
+            # This handles flags like -b:v or -metadata
+            flag_name = param.split(":")[0] if ":" in param else param
+            if flag_name not in allowed_flags and param not in allowed_flags:
+                raise ValueError(f"Forbidden or unknown FFmpeg flag: {param}")
+        else:
+            # For values, prevent protocol injection or suspicious sequences
+            if any(proto in param.lower() for proto in ["://", "file:", "php:", "expect:"]):
+                raise ValueError(f"Potential protocol injection in FFmpeg parameter: {param}")
 
 def register_clip(clip):
     """Registers a clip in the global state and returns its ID."""
@@ -195,6 +219,7 @@ def write_videofile(
 ) -> str:
     """Write a video clip to a file."""
     filename = validate_path(filename)
+    validate_ffmpeg_params(ffmpeg_params)
     clip = get_clip(clip_id)
     clip.write_videofile(
         filename=filename,

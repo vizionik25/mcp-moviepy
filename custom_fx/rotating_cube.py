@@ -1,6 +1,7 @@
 from moviepy import Effect
 import numpy as np
 import cv2
+from functools import lru_cache
 
 class RotatingCube(Effect):
     """
@@ -31,8 +32,8 @@ class RotatingCube(Effect):
         self.motion_radius = motion_radius
         self.motion_speed = motion_speed
 
-    def _apply_quad_mirror(self, frame):
-        h, w = frame.shape[:2]
+    @lru_cache(maxsize=128)
+    def _get_mirror_indices(self, w, h):
         xc, yc = w // 2, h // 2
         idx_x = np.arange(w)
         idx_x = np.where(idx_x <= xc, idx_x, 2 * xc - idx_x)
@@ -40,7 +41,31 @@ class RotatingCube(Effect):
         idx_y = np.arange(h)
         idx_y = np.where(idx_y <= yc, idx_y, 2 * yc - idx_y)
         idx_y = np.clip(idx_y, 0, yc)
+        return idx_x, idx_y
+
+    def _apply_quad_mirror(self, frame):
+        h, w = frame.shape[:2]
+        idx_x, idx_y = self._get_mirror_indices(w, h)
         return frame[idx_y][:, idx_x]
+
+    @lru_cache(maxsize=128)
+    def _get_static_geometry(self, w, h):
+        focal_length = max(w, h) * self.zoom
+        dist = max(w, h) / 2
+
+        # Define 6 faces (Front, Back, Top, Bottom, Right, Left)
+        cube_faces = [
+            np.array([[-w/2, -h/2,  dist], [ w/2, -h/2,  dist], [ w/2,  h/2,  dist], [-w/2,  h/2,  dist]]), # Front
+            np.array([[ w/2, -h/2, -dist], [-w/2, -h/2, -dist], [-w/2,  h/2, -dist], [ w/2,  h/2, -dist]]), # Back
+            np.array([[-w/2, -dist, -h/2], [ w/2, -dist, -h/2], [ w/2, -dist,  h/2], [-w/2, -dist,  h/2]]), # Top
+            np.array([[-w/2,  dist,  h/2], [ w/2,  dist,  h/2], [ w/2,  dist, -h/2], [-w/2,  dist, -h/2]]), # Bottom
+            np.array([[ dist, -h/2,  w/2], [ dist, -h/2, -w/2], [ dist,  h/2, -w/2], [ dist,  h/2,  w/2]]), # Right
+            np.array([[-dist, -h/2, -w/2], [-dist, -h/2,  w/2], [-dist,  h/2,  w/2], [-dist,  h/2, -w/2]]), # Left
+        ]
+
+        src_pts = np.array([[0,0], [w,0], [w,h], [0,h]], dtype=np.float32)
+
+        return focal_length, cube_faces, src_pts
 
     def apply(self, clip):
         def filter(get_frame, t):
@@ -57,19 +82,8 @@ class RotatingCube(Effect):
             off_x = w * self.motion_radius * np.cos(m_rad)
             off_y = h * self.motion_radius * np.sin(m_rad)
             
-            # Perspective parameters
-            focal_length = max(w, h) * self.zoom
-            dist = max(w, h) / 2
-            
-            # Define 6 faces (Front, Back, Top, Bottom, Right, Left)
-            cube_faces = [
-                np.array([[-w/2, -h/2,  dist], [ w/2, -h/2,  dist], [ w/2,  h/2,  dist], [-w/2,  h/2,  dist]]), # Front
-                np.array([[ w/2, -h/2, -dist], [-w/2, -h/2, -dist], [-w/2,  h/2, -dist], [ w/2,  h/2, -dist]]), # Back
-                np.array([[-w/2, -dist, -h/2], [ w/2, -dist, -h/2], [ w/2, -dist,  h/2], [-w/2, -dist,  h/2]]), # Top
-                np.array([[-w/2,  dist,  h/2], [ w/2,  dist,  h/2], [ w/2,  dist, -h/2], [-w/2,  dist, -h/2]]), # Bottom
-                np.array([[ dist, -h/2,  w/2], [ dist, -h/2, -w/2], [ dist,  h/2, -w/2], [ dist,  h/2,  w/2]]), # Right
-                np.array([[-dist, -h/2, -w/2], [-dist, -h/2,  w/2], [-dist,  h/2,  w/2], [-dist,  h/2, -w/2]]), # Left
-            ]
+            # Retrieve static geometry from cache
+            focal_length, cube_faces, src_pts = self._get_static_geometry(w, h)
 
             # Rotation Matrices
             cx, sx = np.cos(ax), np.sin(ax)
@@ -113,7 +127,6 @@ class RotatingCube(Effect):
 
             # Draw
             canvas = np.zeros_like(frame)
-            src_pts = np.array([[0,0], [w,0], [w,h], [0,h]], dtype=np.float32)
             
             for _, dst_pts in rendered_faces:
                 M = cv2.getPerspectiveTransform(src_pts, dst_pts)

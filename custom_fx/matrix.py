@@ -22,6 +22,10 @@ class Matrix(Effect):
         Seed for the random number generator.
     """
     def __init__(self, speed=150, density=0.2, chars="0123456789ABCDEF", color="green", font_size=16, seed=42):
+        The seed for the random number generator. Default is 42.
+    """
+    def __init__(self, speed=150, density=0.2, chars="0123456789ABCDEF", color="green", font_size=16, seed=42):
+        self.seed = seed
         self.speed = speed
         self.density = density
         self.chars = chars
@@ -117,7 +121,9 @@ class Matrix(Effect):
             char_slices = self._atlas[char_indices]
             
             # Apply brightness: (rows, cols, char_h, char_w)
-            rain_mask = (char_slices.astype(np.float32) * brightness[:, :, None, None])
+            # Use fixed-point arithmetic (x256) for brightness application
+            brightness_int = (brightness * 256).astype(np.uint16)
+            rain_mask = (char_slices.astype(np.uint16) * brightness_int[:, :, None, None]) >> 8
             
             # Reshape/Transpose to form the full rain image
             # (rows, cols, char_h, char_w) -> (rows, char_h, cols, char_w) -> (H, W)
@@ -128,11 +134,12 @@ class Matrix(Effect):
             
             # 4. Coloring and Compositing
             # Convert to RGB and apply color
-            rain_rgb = (rain_layer[:, :, None] * self.rgb).astype(np.uint8)
+            rain_rgb = (rain_layer[:, :, None].astype(np.uint32) * self.rgb).astype(np.uint8)
             
             # Composite with original frame
             # We use an additive blend but slightly dim the background for visibility
-            dimmed_bg = (frame.astype(np.float32) * 0.8).astype(np.uint8)
+            dimmed_bg = (frame.astype(np.uint16) * 205) >> 8
+            dimmed_bg = dimmed_bg.astype(np.uint8)
             
             # Additive blend
             out = np.clip(dimmed_bg.astype(np.int16) + rain_rgb.astype(np.int16), 0, 255).astype(np.uint8)

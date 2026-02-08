@@ -3,26 +3,6 @@ from unittest.mock import MagicMock, patch
 import uuid
 import pytest
 
-# Mock dependencies before importing main
-mock_modules = [
-    "fastmcp",
-    "moviepy",
-    "moviepy.video.tools.drawing",
-    "moviepy.video.tools.cuts",
-    "moviepy.video.io.ffmpeg_tools",
-    "moviepy.video.tools.subtitles",
-    "moviepy.video.tools.credits",
-    "mcp_ui_server",
-    "ui",
-    "custom_fx",
-    "numpy",
-    "numexpr",
-    "pydantic"
-]
-
-for module_name in mock_modules:
-    sys.modules[module_name] = MagicMock()
-
 # Import the module under test
 import main
 from main import register_clip

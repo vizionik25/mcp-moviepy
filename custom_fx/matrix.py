@@ -22,9 +22,6 @@ class Matrix(Effect):
         Seed for the random number generator.
     """
     def __init__(self, speed=150, density=0.2, chars="0123456789ABCDEF", color="green", font_size=16, seed=42):
-        The seed for the random number generator. Default is 42.
-    """
-    def __init__(self, speed=150, density=0.2, chars="0123456789ABCDEF", color="green", font_size=16, seed=42):
         self.seed = seed
         self.speed = speed
         self.density = density
@@ -91,25 +88,37 @@ class Matrix(Effect):
             # 1. Calculate the Brightness Grid (Vectorized)
             # Time-based position of the 'lead' for each column
             trail_len = h // 2
-            lead_y = (col_speeds * t + col_offsets) % (h + trail_len)
+            # Use integer arithmetic for lead_y
+            lead_y_int = ((col_speeds * t + col_offsets) % (h + trail_len)).astype(np.int32)
             
             # Create a Y-coordinate grid for the rows
-            row_y = np.arange(rows) * self.char_h
+            row_y = (np.arange(rows) * self.char_h).astype(np.int32)
             
             # Calculate distance from each cell to its column's lead position
             # Shape: (rows, cols)
-            dist = lead_y[None, :] - row_y[:, None]
+            dist = lead_y_int[None, :] - row_y[:, None]
+
+            # Calculate brightness map using integer arithmetic (0-256 scale)
+            # Initialize with 0
+            brightness_int = np.zeros((rows, cols), dtype=np.uint16)
             
-            # Brightness decreases as we move away from the lead (upward)
-            brightness = np.where((dist >= 0) & (dist < trail_len), 
-                                  1.0 - (dist / trail_len), 0.0)
+            if trail_len > 0:
+                # Body: brightness decreases linearly from head
+                body_mask = (dist >= 0) & (dist < trail_len)
+                # Formula: 256 * (trail_len - dist) / trail_len
+                # We use integer division.
+                # Note: trail_len - dist is positive in this range.
+                brightness_int[body_mask] = ((trail_len - dist[body_mask]) * 256) // trail_len
             
-            # Highlight the head of the drop
-            brightness = np.where((dist >= 0) & (dist < self.char_h), 
-                                  1.4, brightness)
+            # Highlight the head of the drop (override body)
+            # 1.4 * 256 = 358.4 -> 358
+            head_mask = (dist >= 0) & (dist < self.char_h)
+            brightness_int[head_mask] = 358
             
             # Apply column activity mask
-            brightness *= col_active[None, :]
+            # col_active is float 0.0 or 1.0. Convert to bool/int mask.
+            col_mask = (col_active > 0.5)
+            brightness_int *= col_mask[None, :].astype(np.uint16)
             
             # 2. Randomize characters periodically
             # Characters change slightly over time to simulate shifting data
@@ -122,7 +131,6 @@ class Matrix(Effect):
             
             # Apply brightness: (rows, cols, char_h, char_w)
             # Use fixed-point arithmetic (x256) for brightness application
-            brightness_int = (brightness * 256).astype(np.uint16)
             rain_mask = (char_slices.astype(np.uint16) * brightness_int[:, :, None, None]) >> 8
             
             # Reshape/Transpose to form the full rain image

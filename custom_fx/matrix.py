@@ -18,6 +18,8 @@ class Matrix(Effect):
         The color of the rain. Options: 'red', 'green', 'blue', 'white'.
     font_size : int
         Size of the characters.
+    seed : int
+        The seed for the random number generator. Default is 42.
     """
     def __init__(self, speed=150, density=0.2, chars="0123456789ABCDEF", color="green", font_size=16, seed=42):
         self.speed = speed
